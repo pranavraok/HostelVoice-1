@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AlertCircle, Plus, Trash2, Edit2, Calendar, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, Plus, Trash2, Edit2, Calendar, Pin } from 'lucide-react'
 
 interface Announcement {
   id: string
@@ -49,23 +49,34 @@ export default function AnnouncementsManagePage() {
 
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string
+    message: string
+    priority: 'low' | 'medium' | 'high'
+    category: string
+    expiryDate: string
+    visibility: 'all' | 'students' | 'caretakers'
+  }>({
     title: '',
     message: '',
-    priority: 'medium' as const,
+    priority: 'medium',
     category: 'General',
     expiryDate: '',
-    visibility: 'all' as const
+    visibility: 'all'
   })
 
   if (user?.role !== 'admin') {
     return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-red-900">Access Denied</h3>
-            <p className="text-sm text-red-700">Only administrators can manage announcements.</p>
+      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+        <div className="max-w-md w-full rounded-3xl p-8 border-2 shadow-xl" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)' }}>
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+              <AlertCircle className="w-6 h-6" style={{ color: '#ef4444' }} />
+            </div>
+            <div>
+              <h3 className="font-bold text-xl text-gray-900 mb-2">Access Denied</h3>
+              <p className="text-gray-700 leading-relaxed">Only administrators can manage announcements.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -144,239 +155,343 @@ export default function AnnouncementsManagePage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-100 text-red-700 border-red-300'
+        return { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' }
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-300'
+        return { bg: 'rgba(242, 105, 24, 0.1)', text: '#f26918', border: 'rgba(242, 105, 24, 0.3)' }
       case 'low':
-        return 'bg-green-100 text-green-700 border-green-300'
+        return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)' }
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-300'
+        return { bg: 'rgba(107, 114, 128, 0.1)', text: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' }
     }
   }
 
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, { bg: string, text: string, border: string }> = {
+      Maintenance: { bg: 'rgba(242, 105, 24, 0.1)', text: '#f26918', border: 'rgba(242, 105, 24, 0.3)' },
+      Rules: { bg: 'rgba(1, 75, 137, 0.1)', text: '#014b89', border: 'rgba(1, 75, 137, 0.3)' },
+      Events: { bg: 'rgba(6, 182, 212, 0.1)', text: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' },
+      Safety: { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      Academic: { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
+      General: { bg: 'rgba(107, 114, 128, 0.1)', text: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' }
+    }
+    return colors[category] || colors.General
+  }
+
+  const getVisibilityColor = (visibility: string) => {
+    const colors: Record<string, { bg: string, text: string, border: string }> = {
+      all: { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
+      students: { bg: 'rgba(1, 75, 137, 0.1)', text: '#014b89', border: 'rgba(1, 75, 137, 0.3)' },
+      caretakers: { bg: 'rgba(242, 105, 24, 0.1)', text: '#f26918', border: 'rgba(242, 105, 24, 0.3)' }
+    }
+    return colors[visibility] || colors.all
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-4 pt-4 pb-24 md:px-8 md:pt-8 md:pb-12">
-+      <div className="mb-8">
-+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Manage Announcements</h1>
-+        <p className="text-gray-600">Create, edit, and manage hostel announcements</p>
-+      </div>
-      {/* Create/Edit Form */}
-      {showForm && (
-        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8 border border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            {editingId ? 'Edit Announcement' : 'Create New Announcement'}
-          </h2>
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out;
+        }
+      `}</style>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {/* Title */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Title</label>
-                <Input
-                  type="text"
-                  name="title"
-                  placeholder="Announcement title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className="w-full border-gray-300"
-                  required
-                />
-              </div>
+      {/* Background */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(1, 75, 137, 0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(1, 75, 137, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: "80px 80px",
+        }}
+      />
 
-              {/* Message */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Message</label>
-                <textarea
-                  name="message"
-                  placeholder="Write your announcement message here..."
-                  value={formData.message}
-                  onChange={handleInputChange}
-                  rows={5}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-cyan-500 focus:ring-cyan-500 font-sans text-gray-900"
-                  required
-                />
-              </div>
-
-              {/* Priority */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Priority</label>
-                <select
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-cyan-500 focus:ring-cyan-500 bg-white text-gray-900"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Category</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-cyan-500 focus:ring-cyan-500 bg-white text-gray-900"
-                >
-                  <option value="General">General</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Rules">Rules & Regulations</option>
-                  <option value="Events">Events</option>
-                  <option value="Safety">Safety</option>
-                  <option value="Academic">Academic</option>
-                </select>
-              </div>
-
-              {/* Expiry Date */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Expiry Date</label>
-                <Input
-                  type="date"
-                  name="expiryDate"
-                  value={formData.expiryDate}
-                  onChange={handleInputChange}
-                  className="w-full border-gray-300"
-                  required
-                />
-              </div>
-
-              {/* Visibility */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Visibility</label>
-                <select
-                  name="visibility"
-                  value={formData.visibility}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-cyan-500 focus:ring-cyan-500 bg-white text-gray-900"
-                >
-                  <option value="all">All Users</option>
-                  <option value="students">Students Only</option>
-                  <option value="caretakers">Caretakers Only</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="submit"
-                className="bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-semibold px-8 py-2 rounded-lg"
-              >
-                {editingId ? 'Update Announcement' : 'Create Announcement'}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setShowForm(false)
-                  setEditingId(null)
-                  setFormData({
-                    title: '',
-                    message: '',
-                    priority: 'medium',
-                    category: 'General',
-                    expiryDate: '',
-                    visibility: 'all'
-                  })
-                }}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold px-8 py-2 rounded-lg"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
+      <div className="max-w-6xl mx-auto px-4 pt-6 pb-24 md:px-8 md:pt-12 md:pb-12 relative z-10">
+        <div className="mb-8 md:mb-12 animate-fade-in">
+          <h1 className="text-3xl md:text-5xl font-bold mb-2" style={{ color: '#014b89' }}>
+            Manage Announcements
+          </h1>
+          <p className="text-base md:text-lg text-gray-600">Create, edit, and manage hostel announcements</p>
         </div>
-      )}
 
-      {/* Create Button */}
-      {!showForm && (
-        <Button
-          onClick={() => setShowForm(true)}
-          className="mb-8 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-semibold px-6 py-2 rounded-lg flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          New Announcement
-        </Button>
-      )}
+        {/* Create/Edit Form */}
+        {showForm && (
+          <div className="bg-white border-2 rounded-3xl p-6 md:p-8 mb-8 shadow-xl animate-fade-in" style={{ borderColor: 'rgba(242, 105, 24, 0.2)' }}>
+            <h2 className="text-2xl md:text-3xl font-bold mb-6" style={{ color: '#014b89' }}>
+              {editingId ? 'Edit Announcement' : 'Create New Announcement'}
+            </h2>
 
-      {/* Announcements List */}
-      <div className="space-y-4">
-        {announcements.length === 0 ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-            <p className="text-gray-600 font-medium">No announcements yet. Create one to get started!</p>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Title */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Title *</label>
+                  <Input
+                    type="text"
+                    name="title"
+                    placeholder="Announcement title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    className="w-full border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                    required
+                  />
+                </div>
+
+                {/* Message */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Message *</label>
+                  <textarea
+                    name="message"
+                    placeholder="Write your announcement message here..."
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    rows={5}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] font-medium"
+                    required
+                  />
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Priority *</label>
+                  <select
+                    name="priority"
+                    value={formData.priority}
+                    onChange={handleInputChange}
+                    className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Category *</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium"
+                  >
+                    <option value="General">General</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Rules">Rules & Regulations</option>
+                    <option value="Events">Events</option>
+                    <option value="Safety">Safety</option>
+                    <option value="Academic">Academic</option>
+                  </select>
+                </div>
+
+                {/* Expiry Date */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Expiry Date *</label>
+                  <Input
+                    type="date"
+                    name="expiryDate"
+                    value={formData.expiryDate}
+                    onChange={handleInputChange}
+                    className="w-full border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                    required
+                  />
+                </div>
+
+                {/* Visibility */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">Visibility *</label>
+                  <select
+                    name="visibility"
+                    value={formData.visibility}
+                    onChange={handleInputChange}
+                    className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium"
+                  >
+                    <option value="all">All Users</option>
+                    <option value="students">Students Only</option>
+                    <option value="caretakers">Caretakers Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button
+                  type="submit"
+                  className="text-white font-bold h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  style={{ background: '#014b89' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#012d52'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#014b89'}
+                >
+                  {editingId ? 'Update Announcement' : 'Create Announcement'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingId(null)
+                    setFormData({
+                      title: '',
+                      message: '',
+                      priority: 'medium',
+                      category: 'General',
+                      expiryDate: '',
+                      visibility: 'all'
+                    })
+                  }}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold h-12 px-8 rounded-xl"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
           </div>
-        ) : (
-          announcements.map(announcement => (
-            <div
-              key={announcement.id}
-              className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-200"
-            >
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-900">{announcement.title}</h3>
-                    {announcement.isPinned && (
-                      <span className="w-3 h-3 rounded-full bg-cyan-500"></span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${getPriorityColor(announcement.priority)}`}>
-                      {announcement.priority.toUpperCase()}
-                    </span>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
-                      {announcement.category}
-                    </span>
-                    <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                      {announcement.visibility}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-gray-700 mb-4 leading-relaxed">{announcement.message}</p>
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>Created: {announcement.createdDate}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>Expires: {announcement.expiryDate}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => togglePin(announcement.id)}
-                    variant="outline"
-                    className="border-gray-300 text-gray-700 hover:bg-gray-100 px-3 py-2 text-sm"
-                  >
-                    {announcement.isPinned ? 'Unpin' : 'Pin'}
-                  </Button>
-                  <Button
-                    onClick={() => handleEdit(announcement)}
-                    variant="outline"
-                    className="border-gray-300 text-gray-700 hover:bg-gray-100 px-3 py-2 text-sm flex items-center gap-2"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(announcement.id)}
-                    variant="outline"
-                    className="border-red-300 text-red-700 hover:bg-red-50 px-3 py-2 text-sm flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))
         )}
+
+        {/* Create Button */}
+        {!showForm && (
+          <Button
+            onClick={() => setShowForm(true)}
+            className="mb-8 text-white font-bold gap-2 h-12 md:h-14 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+            style={{ background: '#f26918' }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#d95a0f'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#f26918'}
+          >
+            <Plus className="w-5 h-5" />
+            New Announcement
+          </Button>
+        )}
+
+        {/* Announcements List */}
+        <div className="space-y-6">
+          {announcements.length === 0 ? (
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-12 text-center shadow-lg">
+              <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(1, 75, 137, 0.1)' }}>
+                <AlertCircle className="w-10 h-10" style={{ color: '#014b89' }} />
+              </div>
+              <p className="text-gray-600 font-semibold text-lg">No announcements yet. Create one to get started!</p>
+            </div>
+          ) : (
+            announcements.map((announcement, index) => {
+              const priorityColor = getPriorityColor(announcement.priority)
+              const categoryColor = getCategoryColor(announcement.category)
+              const visibilityColor = getVisibilityColor(announcement.visibility)
+              
+              return (
+                <div
+                  key={announcement.id}
+                  className="bg-white rounded-2xl border-2 border-gray-200 p-6 md:p-8 hover:shadow-xl transition-all duration-300 animate-fade-in"
+                  style={{ 
+                    animationDelay: `${index * 0.1}s`,
+                    borderColor: announcement.isPinned ? 'rgba(242, 105, 24, 0.3)' : undefined,
+                    background: announcement.isPinned ? 'linear-gradient(to right, rgba(242, 105, 24, 0.05), transparent)' : 'white'
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">{announcement.title}</h3>
+                        {announcement.isPinned && (
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(242, 105, 24, 0.15)' }}>
+                            <Pin className="w-5 h-5" style={{ color: '#f26918' }} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap mb-4">
+                        <span 
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border-2"
+                          style={{ 
+                            background: priorityColor.bg, 
+                            color: priorityColor.text,
+                            borderColor: priorityColor.border
+                          }}
+                        >
+                          {announcement.priority.toUpperCase()}
+                        </span>
+                        <span 
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border-2"
+                          style={{ 
+                            background: categoryColor.bg, 
+                            color: categoryColor.text,
+                            borderColor: categoryColor.border
+                          }}
+                        >
+                          {announcement.category}
+                        </span>
+                        <span 
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border-2"
+                          style={{ 
+                            background: visibilityColor.bg, 
+                            color: visibilityColor.text,
+                            borderColor: visibilityColor.border
+                          }}
+                        >
+                          👁️ {announcement.visibility}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-700 mb-6 leading-relaxed">{announcement.message}</p>
+
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-6 border-t-2 border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" style={{ color: '#014b89' }} />
+                        <span className="font-medium">Created: {new Date(announcement.createdDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" style={{ color: '#f26918' }} />
+                        <span className="font-medium">Expires: {new Date(announcement.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={() => togglePin(announcement.id)}
+                        variant="outline"
+                        className="border-2 font-semibold px-4 py-2 text-sm rounded-xl"
+                        style={{ 
+                          borderColor: announcement.isPinned ? '#f26918' : '#e5e7eb',
+                          color: announcement.isPinned ? '#f26918' : '#6b7280'
+                        }}
+                      >
+                        {announcement.isPinned ? 'Unpin' : 'Pin'}
+                      </Button>
+                      <Button
+                        onClick={() => handleEdit(announcement)}
+                        variant="outline"
+                        className="border-2 border-gray-300 text-gray-700 hover:bg-gray-100 px-4 py-2 text-sm rounded-xl flex items-center gap-2 font-semibold"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => handleDelete(announcement.id)}
+                        variant="outline"
+                        className="border-2 px-4 py-2 text-sm rounded-xl flex items-center gap-2 font-semibold"
+                        style={{ borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
     </div>
   )

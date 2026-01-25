@@ -103,145 +103,196 @@ export default function ResidentsPage() {
   })
 
   const stats = [
-    { label: 'Total Residents', value: residents.length, color: 'text-accent' },
-    { label: 'Active', value: residents.filter(r => r.status === 'active').length, color: 'text-green-400' },
-    { label: 'Inactive', value: residents.filter(r => r.status === 'inactive').length, color: 'text-muted-foreground' },
-    { label: 'Pending Issues', value: residents.reduce((sum, r) => sum + r.issues, 0), color: 'text-orange-400' }
+    { label: 'Total Residents', value: residents.length, color: '#014b89' },
+    { label: 'Active', value: residents.filter(r => r.status === 'active').length, color: '#10b981' },
+    { label: 'Inactive', value: residents.filter(r => r.status === 'inactive').length, color: '#6b7280' },
+    { label: 'Pending Issues', value: residents.reduce((sum, r) => sum + r.issues, 0), color: '#f26918' }
   ]
 
   if (!user) return null
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-4 pb-24 md:px-8 md:pt-8 md:pb-12">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Residents Management</h1>
-        <p className="text-muted-foreground">View and manage hostel residents</p>
-      </div>
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out;
+        }
+      `}</style>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-card border border-border rounded-lg p-4">
-            <p className="text-muted-foreground text-sm mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
+      {/* Background */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(1, 75, 137, 0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(1, 75, 137, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: "80px 80px",
+        }}
+      />
 
-      {/* Search and Filter */}
-      <div className="space-y-4 mb-8">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by name, room, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-muted border-border"
-          />
+      <div className="max-w-7xl mx-auto px-4 pt-6 pb-24 md:px-8 md:pt-12 md:pb-12 relative z-10">
+        {/* Header */}
+        <div className="mb-8 md:mb-12 animate-fade-in">
+          <h1 className="text-3xl md:text-5xl font-bold mb-2" style={{ color: '#014b89' }}>
+            Residents Management
+          </h1>
+          <p className="text-base md:text-lg text-gray-600">View and manage hostel residents</p>
         </div>
 
-        {/* Filter */}
-        <div className="flex gap-2 flex-wrap">
-          {(['all', 'active', 'inactive'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterStatus === status
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
+          {stats.map((stat, i) => (
+            <div 
+              key={stat.label} 
+              className="bg-white border-2 border-gray-100 rounded-2xl p-5 md:p-6 hover:shadow-xl transition-all animate-fade-in"
+              style={{ animationDelay: `${i * 0.1}s` }}
             >
-              {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
+              <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">{stat.label}</p>
+              <p className="text-3xl md:text-4xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+            </div>
           ))}
         </div>
-      </div>
 
-      {/* Residents Table */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Name</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Room</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Contact</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Check-in</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Issues</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredResidents.map((resident) => (
-                <tr
-                  key={resident.id}
-                  className="border-b border-border hover:bg-muted/50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <p className="font-semibold">{resident.name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">{resident.room}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        <a
-                          href={`mailto:${resident.email}`}
-                          className="text-accent hover:underline"
-                        >
-                          {resident.email}
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="w-4 h-4" />
-                        {resident.phone}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {resident.checkInDate}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      resident.status === 'active'
-                        ? 'bg-green-500/10 text-green-400'
-                        : 'bg-muted/50 text-muted-foreground'
-                    }`}>
-                      {resident.status === 'active' ? '✓ Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {resident.issues > 0 ? (
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400">
-                        {resident.issues} open
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">None</span>
-                    )}
-                  </td>
+        {/* Search and Filter */}
+        <div className="space-y-4 mb-8">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search by name, room, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+            />
+          </div>
+
+          {/* Filter */}
+          <div className="flex gap-3 flex-wrap">
+            {(['all', 'active', 'inactive'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className="px-6 py-3 rounded-xl text-sm font-bold transition-all border-2"
+                style={{
+                  background: filterStatus === status ? '#014b89' : '#f9fafb',
+                  color: filterStatus === status ? 'white' : '#6b7280',
+                  borderColor: filterStatus === status ? '#014b89' : '#e5e7eb'
+                }}
+              >
+                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Residents Table */}
+        <div className="bg-white border-2 border-gray-100 rounded-2xl overflow-hidden shadow-lg">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Room</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Contact</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Check-in</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Issues</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredResidents.map((resident) => (
+                  <tr
+                    key={resident.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-5">
+                      <p className="font-bold text-gray-900">{resident.name}</p>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(1, 75, 137, 0.1)' }}>
+                          <MapPin className="w-4 h-4" style={{ color: '#014b89' }} />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900">{resident.room}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="w-4 h-4" style={{ color: '#f26918' }} />
+                          <a
+                            href={`mailto:${resident.email}`}
+                            className="font-medium hover:underline"
+                            style={{ color: '#014b89' }}
+                          >
+                            {resident.email}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                          <Phone className="w-4 h-4" />
+                          {resident.phone}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-sm font-medium text-gray-700">
+                      {new Date(resident.checkInDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-5">
+                      <span 
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold border-2"
+                        style={
+                          resident.status === 'active'
+                            ? { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }
+                            : { background: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', borderColor: 'rgba(107, 114, 128, 0.3)' }
+                        }
+                      >
+                        {resident.status === 'active' ? '✓ Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      {resident.issues > 0 ? (
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-bold border-2" style={{ background: 'rgba(242, 105, 24, 0.1)', color: '#f26918', borderColor: 'rgba(242, 105, 24, 0.3)' }}>
+                          {resident.issues} open
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500 font-medium">None</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Empty State */}
-      {filteredResidents.length === 0 && (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No residents found matching your search</p>
-        </div>
-      )}
+        {/* Empty State */}
+        {filteredResidents.length === 0 && (
+          <div className="bg-white border-2 border-gray-200 rounded-3xl p-12 md:p-16 text-center shadow-lg mt-8">
+            <div 
+              className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+              style={{ background: 'rgba(1, 75, 137, 0.1)' }}
+            >
+              <Users className="w-10 h-10" style={{ color: '#014b89' }} />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No residents found</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              No residents match your search criteria. Try adjusting your filters or search terms.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
