@@ -1,123 +1,155 @@
 'use client'
 
-import React from "react"
-
-import { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { lostFoundApi, LostFoundItem, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, X, Plus, CheckCircle, Clock, MapPin } from 'lucide-react'
-
-interface LostFoundItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  type: 'lost' | 'found'
-  status: 'open' | 'claimed'
-  postedBy: string
-  createdAt: string
-  location?: string
-}
+import { Search, X, Plus, CheckCircle, Clock, MapPin, Loader2, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function LostFoundPage() {
   const { user } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [filter, setFilter] = useState<'all' | 'lost' | 'found'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-
-  const [items, setItems] = useState<LostFoundItem[]>([
-    {
-      id: '1',
-      title: 'Black Leather Wallet',
-      description: 'Black leather wallet with ID cards inside. Contains important documents.',
-      category: 'Wallet',
-      type: 'lost',
-      status: 'open',
-      postedBy: 'Arjun Singh',
-      createdAt: '2026-01-24',
-      location: 'Room A-203'
-    },
-    {
-      id: '2',
-      title: 'Apple AirPods Pro',
-      description: 'Found near the common area. Black color with charging case.',
-      category: 'Electronics',
-      type: 'found',
-      status: 'open',
-      postedBy: 'Staff',
-      createdAt: '2026-01-23',
-      location: 'Common Hall'
-    },
-    {
-      id: '3',
-      title: 'Blue Backpack',
-      description: 'Blue backpack with college logo. Left near the entrance.',
-      category: 'Bags',
-      type: 'found',
-      status: 'claimed',
-      postedBy: 'Staff',
-      createdAt: '2026-01-22',
-      location: 'Main Entrance'
-    },
-    {
-      id: '4',
-      title: 'House Keys',
-      description: 'Set of 3 house keys lost somewhere in the hostel premises.',
-      category: 'Keys',
-      type: 'lost',
-      status: 'open',
-      postedBy: 'John Doe',
-      createdAt: '2026-01-21',
-      location: 'Hostel premises'
-    }
-  ])
+  const [items, setItems] = useState<LostFoundItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    title: '',
+    item_name: '',
     description: '',
-    category: 'Other',
+    category: 'other',
     type: 'lost' as 'lost' | 'found',
-    location: ''
+    location_lost: '',
+    location_found: '',
+    current_location: '',
+    date_lost_found: '',
+    contact_info: '',
+    notes: ''
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newItem: LostFoundItem = {
-      id: String(items.length + 1),
-      title: formData.title,
-      description: formData.description,
-      category: formData.category,
-      type: formData.type,
-      status: 'open',
-      postedBy: user?.name || 'Anonymous',
-      createdAt: new Date().toISOString().split('T')[0],
-      location: formData.location
+  // Fetch items
+  const fetchItems = useCallback(async () => {
+    if (!user) return
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await lostFoundApi.getOpenItems(1, 50)
+      if (response.data) {
+        setItems(response.data)
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to load items'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
     }
-    setItems([newItem, ...items])
-    setFormData({ title: '', description: '', category: 'Other', type: 'lost', location: '' })
-    setShowForm(false)
+  }, [user])
+
+  useEffect(() => {
+    fetchItems()
+  }, [fetchItems])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+
+    setIsSubmitting(true)
+
+    try {
+      const submitData: any = {
+        item_name: formData.item_name,
+        description: formData.description,
+        category: formData.category,
+        type: formData.type,
+        contact_info: formData.contact_info || user.email,
+      }
+
+      // Add type-specific fields
+      if (formData.type === 'lost') {
+        if (formData.location_lost) submitData.location_lost = formData.location_lost
+        if (formData.date_lost_found) {
+          // Convert date to ISO datetime string
+          submitData.date_lost = new Date(formData.date_lost_found).toISOString()
+        }
+      } else {
+        if (formData.location_found) submitData.location_found = formData.location_found
+        if (formData.current_location) submitData.current_location = formData.current_location
+        if (formData.date_lost_found) {
+          // Convert date to ISO datetime string
+          submitData.date_found = new Date(formData.date_lost_found).toISOString()
+        }
+      }
+
+      if (formData.notes) submitData.notes = formData.notes
+
+      console.log('Submitting data:', submitData) // Debug log
+
+      const response = await lostFoundApi.report(submitData)
+
+      if (response.data) {
+        setItems(prev => [response.data!, ...prev])
+        toast.success('Item reported successfully!')
+        setFormData({ 
+          item_name: '', 
+          description: '', 
+          category: 'other', 
+          type: 'lost', 
+          location_lost: '',
+          location_found: '',
+          current_location: '',
+          date_lost_found: '',
+          contact_info: '',
+          notes: ''
+        })
+        setShowForm(false)
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to report item'
+      console.error('Error submitting item:', err)
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleClaim = async (id: string) => {
+    try {
+      const response = await lostFoundApi.claim(id, user?.email || 'Contact via hostel staff')
+      if (response.data) {
+        setItems(prev => prev.map(i => i.id === id ? response.data! : i))
+        toast.success('Claim submitted! The reporter will be notified.')
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to claim'
+      toast.error(message)
+    }
   }
 
   const filteredItems = items.filter((item) => {
     const matchesType = filter === 'all' || item.type === filter
     const matchesSearch = searchQuery === '' || 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesType && matchesSearch
   })
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
-      Wallet: '👛',
-      Electronics: '📱',
-      Bags: '🎒',
-      Keys: '🔑',
-      Documents: '📄',
-      Clothing: '👕',
-      Other: '📦'
+      wallet: '👛',
+      electronics: '📱',
+      bags: '🎒',
+      keys: '🔑',
+      documents: '📄',
+      clothing: '👕',
+      other: '📦'
     }
-    return icons[category] || '📦'
+    return icons[category?.toLowerCase()] || '📦'
   }
 
   const getTypeColor = (type: 'lost' | 'found') => {
@@ -169,16 +201,26 @@ export default function LostFoundPage() {
               Help community members find their lost items or claim found items
             </p>
           </div>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            className="text-white font-bold gap-2 w-full md:w-auto h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-base"
-            style={{ background: '#014b89' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#012d52'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#014b89'}
-          >
-            <Plus className="w-5 h-5" />
-            Report Item
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={fetchItems}
+              variant="outline"
+              className="gap-2 h-12 rounded-xl font-semibold border-2"
+              style={{ borderColor: '#014b89', color: '#014b89' }}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              className="text-white font-bold gap-2 w-full md:w-auto h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-base"
+              style={{ background: '#014b89' }}
+            >
+              <Plus className="w-5 h-5" />
+              Report Item
+            </Button>
+          </div>
         </div>
 
         {/* Report Form */}
@@ -226,14 +268,14 @@ export default function LostFoundPage() {
                 </div>
               </div>
 
-              {/* Title */}
+              {/* Item Name */}
               <div>
-                <label className="text-sm font-bold text-gray-900 mb-2 block">Item Title *</label>
+                <label className="text-sm font-bold text-gray-900 mb-2 block">Item Name *</label>
                 <Input
                   type="text"
-                  placeholder="e.g., Black Leather Wallet"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g., Black Leather Wallet, iPhone 13 Pro"
+                  value={formData.item_name}
+                  onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
                   className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
                   required
                 />
@@ -247,38 +289,105 @@ export default function LostFoundPage() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium transition-all"
                 >
-                  <option>Wallet</option>
-                  <option>Electronics</option>
-                  <option>Bags</option>
-                  <option>Keys</option>
-                  <option>Documents</option>
-                  <option>Clothing</option>
-                  <option>Other</option>
+                  <option value="wallet">👛 Wallet</option>
+                  <option value="electronics">📱 Electronics</option>
+                  <option value="bags">🎒 Bags</option>
+                  <option value="keys">🔑 Keys</option>
+                  <option value="documents">📄 Documents</option>
+                  <option value="clothing">👕 Clothing</option>
+                  <option value="other">📦 Other</option>
                 </select>
               </div>
 
-              {/* Location */}
+              {/* Date */}
               <div>
-                <label className="text-sm font-bold text-gray-900 mb-2 block">Location</label>
+                <label className="text-sm font-bold text-gray-900 mb-2 block">
+                  Date {formData.type === 'lost' ? 'Lost' : 'Found'}
+                </label>
+                <Input
+                  type="date"
+                  value={formData.date_lost_found}
+                  onChange={(e) => setFormData({ ...formData, date_lost_found: e.target.value })}
+                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              {/* Location - Lost Item */}
+              {formData.type === 'lost' && (
+                <div>
+                  <label className="text-sm font-bold text-gray-900 mb-2 block">Where did you lose it?</label>
+                  <Input
+                    type="text"
+                    placeholder="e.g., Library, Cafeteria, Room 232"
+                    value={formData.location_lost}
+                    onChange={(e) => setFormData({ ...formData, location_lost: e.target.value })}
+                    className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                  />
+                </div>
+              )}
+
+              {/* Location - Found Item */}
+              {formData.type === 'found' && (
+                <>
+                  <div>
+                    <label className="text-sm font-bold text-gray-900 mb-2 block">Where did you find it?</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g., Library, Cafeteria, Near Gate"
+                      value={formData.location_found}
+                      onChange={(e) => setFormData({ ...formData, location_found: e.target.value })}
+                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-900 mb-2 block">Current Location</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g., With Security, Room 101, Office"
+                      value={formData.current_location}
+                      onChange={(e) => setFormData({ ...formData, current_location: e.target.value })}
+                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Contact Info */}
+              <div>
+                <label className="text-sm font-bold text-gray-900 mb-2 block">Contact Information</label>
                 <Input
                   type="text"
-                  placeholder="Where was it lost/found?"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Phone number or email (optional)"
+                  value={formData.contact_info}
+                  onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
                   className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
                 />
+                <p className="text-xs text-gray-500 mt-1">Your email will be used if not provided</p>
               </div>
 
               {/* Description */}
               <div>
                 <label className="text-sm font-bold text-gray-900 mb-2 block">Description *</label>
                 <textarea
-                  placeholder="Describe the item in detail..."
+                  placeholder="Describe the item in detail (color, brand, unique features)..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium"
                   rows={4}
                   required
+                />
+              </div>
+
+              {/* Additional Notes */}
+              <div>
+                <label className="text-sm font-bold text-gray-900 mb-2 block">Additional Notes</label>
+                <textarea
+                  placeholder="Any other information that might help..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium"
+                  rows={2}
                 />
               </div>
 
@@ -288,10 +397,9 @@ export default function LostFoundPage() {
                   type="submit" 
                   className="text-white font-bold w-full sm:flex-1 h-12 rounded-xl shadow-lg hover:shadow-xl transition-all"
                   style={{ background: '#014b89' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#012d52'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#014b89'}
+                  disabled={isSubmitting}
                 >
-                  Report Item
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Report'}
                 </Button>
                 <Button
                   type="button"
@@ -340,7 +448,28 @@ export default function LostFoundPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-12 h-12 animate-spin mb-4" style={{ color: '#014b89' }} />
+            <p className="text-gray-600 font-medium">Loading items...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center mb-8">
+            <Search className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-red-700 mb-2">Failed to Load Items</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchItems} className="bg-red-600 hover:bg-red-700 text-white">
+              Try Again
+            </Button>
+          </div>
+        )}
+
         {/* Items Grid */}
+        {!isLoading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredItems.length === 0 ? (
             <div className="col-span-full bg-white border-2 border-gray-200 rounded-3xl p-12 md:p-16 text-center shadow-lg">
@@ -368,6 +497,9 @@ export default function LostFoundPage() {
           ) : (
             filteredItems.map((item, index) => {
               const typeColor = getTypeColor(item.type)
+              const location = item.type === 'lost' ? item.location_lost : (item.location_found || item.current_location)
+              const dateDisplay = item.type === 'lost' ? item.date_lost : item.date_found
+              
               return (
                 <div
                   key={item.id}
@@ -378,9 +510,14 @@ export default function LostFoundPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <span className="text-4xl">{getCategoryIcon(item.category)}</span>
-                        <h3 className="text-xl font-bold text-gray-900">{item.title}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">{item.item_name}</h3>
                       </div>
-                      <p className="text-gray-600 leading-relaxed">{item.description}</p>
+                      <p className="text-gray-600 leading-relaxed mb-3">{item.description}</p>
+                      {item.notes && (
+                        <p className="text-sm text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-gray-200">
+                          💡 {item.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -396,31 +533,67 @@ export default function LostFoundPage() {
                     >
                       {item.type === 'lost' ? '❌ Lost' : '✅ Found'}
                     </span>
-                    <span className="px-4 py-2 rounded-xl text-sm bg-gray-100 text-gray-700 font-semibold border-2 border-gray-200">
+                    <span className="px-4 py-2 rounded-xl text-sm bg-gray-100 text-gray-700 font-semibold border-2 border-gray-200 capitalize">
                       {item.category}
                     </span>
                   </div>
 
                   {/* Location and Date */}
                   <div className="text-sm text-gray-600 border-t-2 border-gray-100 pt-4 pb-4 space-y-2">
-                    {item.location && (
+                    {location && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-0.5" style={{ color: '#f26918' }} />
+                        <div>
+                          <span className="font-semibold">{item.type === 'lost' ? 'Lost at:' : 'Found at:'}</span>
+                          <span className="ml-1">{location}</span>
+                        </div>
+                      </div>
+                    )}
+                    {item.type === 'found' && item.current_location && item.current_location !== item.location_found && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-0.5" style={{ color: '#10b981' }} />
+                        <div>
+                          <span className="font-semibold">Currently at:</span>
+                          <span className="ml-1">{item.current_location}</span>
+                        </div>
+                      </div>
+                    )}
+                    {dateDisplay && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" style={{ color: '#f26918' }} />
-                        <span className="font-medium">{item.location}</span>
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        <span className="font-semibold">{item.type === 'lost' ? 'Lost on:' : 'Found on:'}</span>
+                        <span>{new Date(dateDisplay).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-500" />
-                      <span>{new Date(item.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      <span className="font-semibold">Reported:</span>
+                      <span>{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                   </div>
 
+                  {/* Contact Info */}
+                  {item.contact_info && (
+                    <div className="mb-4 px-4 py-3 bg-blue-50 border-2 border-blue-100 rounded-xl">
+                      <p className="text-sm font-semibold text-blue-700">
+                        📞 Contact: {item.contact_info}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Status */}
                   <div className="mb-4">
-                    {item.status === 'claimed' ? (
+                    {item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' ? (
                       <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
                         <CheckCircle className="w-5 h-5" style={{ color: '#10b981' }} />
-                        <span className="text-sm font-bold" style={{ color: '#10b981' }}>Claimed</span>
+                        <span className="text-sm font-bold" style={{ color: '#10b981' }}>
+                          {item.status === 'returned' ? 'Returned to Owner' : 'Claimed'}
+                        </span>
+                        {item.claimed_at && (
+                          <span className="text-xs text-gray-600 ml-2">
+                            on {new Date(item.claimed_at).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: 'rgba(242, 105, 24, 0.1)', borderColor: 'rgba(242, 105, 24, 0.3)' }}>
@@ -431,24 +604,27 @@ export default function LostFoundPage() {
 
                   {/* Action Button */}
                   <Button
-                    disabled={item.status === 'claimed'}
+                    disabled={item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' || item.reported_by === user?.id}
+                    onClick={() => handleClaim(item.id)}
                     className="w-full text-white font-bold h-12 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-3"
-                    style={{ background: item.status === 'claimed' ? '#9ca3af' : '#014b89' }}
-                    onMouseEnter={(e) => item.status !== 'claimed' && (e.currentTarget.style.background = '#012d52')}
-                    onMouseLeave={(e) => item.status !== 'claimed' && (e.currentTarget.style.background = '#014b89')}
+                    style={{ background: (item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' || item.reported_by === user?.id) ? '#9ca3af' : '#014b89' }}
                   >
-                    {item.type === 'lost' ? 'I Found It' : 'This Is Mine'}
+                    {item.reported_by === user?.id ? 'Your Item' : item.type === 'lost' ? 'I Found This Item' : 'This Is My Item'}
                   </Button>
 
                   {/* Posted By */}
                   <div className="text-xs text-gray-500 text-center font-medium">
-                    Posted by: <span className="font-bold text-gray-700">{item.postedBy}</span>
+                    Posted by: <span className="font-bold text-gray-700">{item.reporter?.full_name || 'Anonymous'}</span>
+                    {item.reporter?.phone_number && (
+                      <span className="ml-2">• 📞 {item.reporter.phone_number}</span>
+                    )}
                   </div>
                 </div>
               )
             })
           )}
         </div>
+        )}
       </div>
     </div>
   )
