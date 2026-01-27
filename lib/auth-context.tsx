@@ -206,18 +206,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(`Your account registration was declined.${reason}\n\nPlease contact administration for more details.`)
       }
 
-      // Set user immediately from profile data without full load
+      // Fetch full profile with name
+      const { data: fullProfile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+
+      // Set user from full profile
       setUser({
-        id: profile.id || data.user.id,
-        email: profile.email || data.user.email || '',
-        name: 'Admin User', // Will be updated if loadUserProfile succeeds
+        id: data.user.id,
+        email: fullProfile?.email || data.user.email || '',
+        name: fullProfile?.full_name || 'User',
         role: profile.role,
-        hostelName: 'N/A',
+        hostelName: fullProfile?.hostel_name || 'N/A',
+        roomNumber: fullProfile?.room_number,
+        studentId: fullProfile?.student_id,
+        phoneNumber: fullProfile?.phone_number,
+        department: fullProfile?.department,
         approvalStatus: profile.approval_status,
       })
 
       console.log('User state set, login complete')
-      // Don't try to load full profile - it times out due to Supabase client issues
     } catch (error) {
       console.error('Login error:', error)
       throw error
