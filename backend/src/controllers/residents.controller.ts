@@ -148,8 +148,88 @@ export class ResidentsController {
   }
 
   /**
-   * Get all residents (staff only)
+   * Get residents from users table (role-based access)
    * GET /api/residents
+   * Admin: all students
+   * Caretaker: students from their hostel
+   * Student: only self
+   */
+  static async getResidents(req: Request, res: Response): Promise<void> {
+    const user = req.user!;
+    const pagination = parsePaginationParams(req.query as Record<string, unknown>);
+    const offset = getOffset(pagination.page, pagination.limit);
+
+    let query = supabaseAdmin
+      .from('users')
+      .select('id, full_name, email, phone_number, hostel_name, room_number, student_id, created_at, approval_status', {
+        count: 'exact',
+      });
+
+    // Role-based filtering
+    if (user.role === 'student') {
+      // Students can only see themselves
+      query = query.eq('id', user.id);
+    } else if (user.role === 'caretaker') {
+      // Caretakers see students from their hostel
+      // First get caretaker's hostel
+      const { data: caretakerData, error: caretakerError } = await supabaseAdmin
+        .from('users')
+        .select('hostel_name')
+        .eq('id', user.id)
+        .single();
+
+      if (caretakerError || !caretakerData?.hostel_name) {
+        sendError(res, 'Caretaker hostel information not found', 404);
+        return;
+      }
+
+      // Filter students by caretaker's hostel
+      query = query
+        .eq('role', 'student')
+        .eq('hostel_name', caretakerData.hostel_name);
+    } else if (user.role === 'admin') {
+      // Admins see all students
+      query = query.eq('role', 'student');
+    } else {
+      sendError(res, 'Access denied', 403);
+      return;
+    }
+
+    // Apply search filter if provided
+    if (req.query.search) {
+      const searchTerm = req.query.search as string;
+      query = query.or(
+        `full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%,room_number.ilike.%${searchTerm}%`
+      );
+    }
+
+    // Apply approval status filter
+    if (req.query.approval_status) {
+      query = query.eq('approval_status', req.query.approval_status as string);
+    }
+
+    // Apply sorting and pagination
+    query = query
+      .order(pagination.sortBy || 'created_at', { ascending: pagination.sortOrder === 'asc' })
+      .range(offset, offset + pagination.limit - 1);
+
+    const { data: residents, error, count } = await query;
+
+    if (error) {
+      throw new ApiError(`Failed to fetch residents: ${error.message}`, 500);
+    }
+
+    if (!residents || residents.length === 0) {
+      sendSuccess(res, 'No residents found', []);
+      return;
+    }
+
+    sendPaginated(res, 'Residents retrieved successfully', residents, pagination, count || 0);
+  }
+
+  /**
+   * Get all residents (staff only) - DEPRECATED, use getResidents instead
+   * GET /api/residents/all
    */
   static async getAll(req: Request, res: Response): Promise<void> {
     const pagination = parsePaginationParams(req.query as Record<string, unknown>);

@@ -30,10 +30,10 @@ router.post('/', asyncHandler(ResidentsController.add));
 
 /**
  * @route   GET /api/residents
- * @desc    Get all residents
- * @access  Staff only
+ * @desc    Get residents (role-based: admin=all students, caretaker=hostel students, student=self)
+ * @access  All authenticated users
  */
-router.get('/', staffOnly, asyncHandler(ResidentsController.getAll));
+router.get('/', asyncHandler(ResidentsController.getResidents));
 
 /**
  * @route   GET /api/residents/hostel/:hostelName
