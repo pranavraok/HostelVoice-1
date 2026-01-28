@@ -38,7 +38,7 @@ export default function LostFoundPage() {
     setError(null)
 
     try {
-      const response = await lostFoundApi.getOpenItems(1, 50)
+      const response = await lostFoundApi.getOpenItems({ page: 1, limit: 50 })
       if (response.data) {
         setItems(response.data)
       }
@@ -74,21 +74,19 @@ export default function LostFoundPage() {
       if (formData.type === 'lost') {
         if (formData.location_lost) submitData.location_lost = formData.location_lost
         if (formData.date_lost_found) {
-          // Convert date to ISO datetime string
           submitData.date_lost = new Date(formData.date_lost_found).toISOString()
         }
       } else {
         if (formData.location_found) submitData.location_found = formData.location_found
         if (formData.current_location) submitData.current_location = formData.current_location
         if (formData.date_lost_found) {
-          // Convert date to ISO datetime string
           submitData.date_found = new Date(formData.date_lost_found).toISOString()
         }
       }
 
       if (formData.notes) submitData.notes = formData.notes
 
-      console.log('Submitting data:', submitData) // Debug log
+      console.log('Submitting data:', submitData)
 
       const response = await lostFoundApi.report(submitData)
 
@@ -190,61 +188,61 @@ export default function LostFoundPage() {
         }}
       />
 
-      <div className="max-w-6xl mx-auto px-4 pt-6 pb-24 md:px-8 md:pt-12 md:pb-12 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 md:mb-12 animate-fade-in">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-12 pb-12 sm:pb-16 md:pb-24 relative z-10">
+        {/* Header - Mobile Optimized */}
+        <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8 md:mb-12 animate-fade-in">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold mb-2" style={{ color: '#014b89' }}>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 sm:mb-2" style={{ color: '#014b89' }}>
               Lost & Found
             </h1>
-            <p className="text-base md:text-lg text-gray-600">
+            <p className="text-sm sm:text-base md:text-lg text-gray-600">
               Help community members find their lost items or claim found items
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               onClick={fetchItems}
               variant="outline"
-              className="gap-2 h-12 rounded-xl font-semibold border-2"
+              className="gap-2 h-11 sm:h-12 rounded-xl font-semibold border-2 text-sm sm:text-base"
               style={{ borderColor: '#014b89', color: '#014b89' }}
               disabled={isLoading}
             >
-              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
               onClick={() => setShowForm(!showForm)}
-              className="text-white font-bold gap-2 w-full md:w-auto h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-base"
+              className="text-white font-bold gap-2 w-full sm:flex-1 md:w-auto h-11 sm:h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
               style={{ background: '#014b89' }}
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               Report Item
             </Button>
           </div>
         </div>
 
-        {/* Report Form */}
+        {/* Report Form - Mobile Optimized */}
         {showForm && (
-          <div className="bg-white border-2 rounded-3xl p-6 md:p-8 mb-8 shadow-xl animate-fade-in" style={{ borderColor: 'rgba(1, 75, 137, 0.2)' }}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold" style={{ color: '#014b89' }}>Report a Lost or Found Item</h2>
+          <div className="bg-white border-2 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 shadow-xl animate-fade-in" style={{ borderColor: 'rgba(1, 75, 137, 0.2)' }}>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold" style={{ color: '#014b89' }}>Report Lost or Found Item</h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <X className="w-6 h-6 text-gray-600" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Type Selection */}
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              {/* Type Selection - Mobile Optimized */}
               <div>
-                <label className="text-sm font-bold text-gray-900 mb-3 block">Item Type *</label>
-                <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-bold text-gray-900 mb-2 sm:mb-3 block">Item Type *</label>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'lost' })}
-                    className="py-4 px-4 rounded-xl text-sm font-bold transition-all border-2"
+                    className="py-3 sm:py-4 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all border-2"
                     style={{
                       background: formData.type === 'lost' ? 'rgba(239, 68, 68, 0.1)' : '#f9fafb',
                       color: formData.type === 'lost' ? '#ef4444' : '#6b7280',
@@ -256,7 +254,7 @@ export default function LostFoundPage() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'found' })}
-                    className="py-4 px-4 rounded-xl text-sm font-bold transition-all border-2"
+                    className="py-3 sm:py-4 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all border-2"
                     style={{
                       background: formData.type === 'found' ? 'rgba(16, 185, 129, 0.1)' : '#f9fafb',
                       color: formData.type === 'found' ? '#10b981' : '#6b7280',
@@ -273,10 +271,10 @@ export default function LostFoundPage() {
                 <label className="text-sm font-bold text-gray-900 mb-2 block">Item Name *</label>
                 <Input
                   type="text"
-                  placeholder="e.g., Black Leather Wallet, iPhone 13 Pro"
+                  placeholder="e.g., Black Leather Wallet"
                   value={formData.item_name}
                   onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
-                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                   required
                 />
               </div>
@@ -287,7 +285,7 @@ export default function LostFoundPage() {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium transition-all"
+                  className="w-full h-11 sm:h-12 px-3 sm:px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium transition-all text-sm sm:text-base"
                 >
                   <option value="wallet">👛 Wallet</option>
                   <option value="electronics">📱 Electronics</option>
@@ -308,7 +306,7 @@ export default function LostFoundPage() {
                   type="date"
                   value={formData.date_lost_found}
                   onChange={(e) => setFormData({ ...formData, date_lost_found: e.target.value })}
-                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                   max={new Date().toISOString().split('T')[0]}
                 />
               </div>
@@ -319,10 +317,10 @@ export default function LostFoundPage() {
                   <label className="text-sm font-bold text-gray-900 mb-2 block">Where did you lose it?</label>
                   <Input
                     type="text"
-                    placeholder="e.g., Library, Cafeteria, Room 232"
+                    placeholder="e.g., Library, Cafeteria"
                     value={formData.location_lost}
                     onChange={(e) => setFormData({ ...formData, location_lost: e.target.value })}
-                    className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                    className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                   />
                 </div>
               )}
@@ -334,20 +332,20 @@ export default function LostFoundPage() {
                     <label className="text-sm font-bold text-gray-900 mb-2 block">Where did you find it?</label>
                     <Input
                       type="text"
-                      placeholder="e.g., Library, Cafeteria, Near Gate"
+                      placeholder="e.g., Library, Near Gate"
                       value={formData.location_found}
                       onChange={(e) => setFormData({ ...formData, location_found: e.target.value })}
-                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                     />
                   </div>
                   <div>
                     <label className="text-sm font-bold text-gray-900 mb-2 block">Current Location</label>
                     <Input
                       type="text"
-                      placeholder="e.g., With Security, Room 101, Office"
+                      placeholder="e.g., With Security, Room 101"
                       value={formData.current_location}
                       onChange={(e) => setFormData({ ...formData, current_location: e.target.value })}
-                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                      className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                     />
                   </div>
                 </>
@@ -358,10 +356,10 @@ export default function LostFoundPage() {
                 <label className="text-sm font-bold text-gray-900 mb-2 block">Contact Information</label>
                 <Input
                   type="text"
-                  placeholder="Phone number or email (optional)"
+                  placeholder="Phone or email (optional)"
                   value={formData.contact_info}
                   onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
-                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+                  className="border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
                 />
                 <p className="text-xs text-gray-500 mt-1">Your email will be used if not provided</p>
               </div>
@@ -370,10 +368,10 @@ export default function LostFoundPage() {
               <div>
                 <label className="text-sm font-bold text-gray-900 mb-2 block">Description *</label>
                 <textarea
-                  placeholder="Describe the item in detail (color, brand, unique features)..."
+                  placeholder="Describe the item in detail..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium text-sm sm:text-base"
                   rows={4}
                   required
                 />
@@ -383,19 +381,19 @@ export default function LostFoundPage() {
               <div>
                 <label className="text-sm font-bold text-gray-900 mb-2 block">Additional Notes</label>
                 <textarea
-                  placeholder="Any other information that might help..."
+                  placeholder="Any other information..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] resize-none font-medium text-sm sm:text-base"
                   rows={2}
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
                 <Button 
                   type="submit" 
-                  className="text-white font-bold w-full sm:flex-1 h-12 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  className="text-white font-bold w-full sm:flex-1 h-11 sm:h-12 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
                   style={{ background: '#014b89' }}
                   disabled={isSubmitting}
                 >
@@ -405,7 +403,7 @@ export default function LostFoundPage() {
                   type="button"
                   onClick={() => setShowForm(false)}
                   variant="outline"
-                  className="border-2 w-full sm:w-auto h-12 rounded-xl font-semibold"
+                  className="border-2 w-full sm:w-auto h-11 sm:h-12 rounded-xl font-semibold text-sm sm:text-base"
                   style={{ borderColor: '#014b89', color: '#014b89' }}
                 >
                   Cancel
@@ -415,27 +413,27 @@ export default function LostFoundPage() {
           </div>
         )}
 
-        {/* Search and Filter */}
-        <div className="space-y-4 mb-8">
+        {/* Search and Filter - Mobile Optimized */}
+        <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             <Input
               type="text"
               placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-12"
+              className="pl-10 sm:pl-12 border-2 border-gray-200 focus:border-[#014b89] focus:ring-[#014b89] rounded-xl h-11 sm:h-12 text-sm sm:text-base"
             />
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
             {(['all', 'lost', 'found'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilter(type)}
-                className="px-6 py-3 rounded-xl text-sm font-bold transition-all border-2"
+                className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all border-2"
                 style={{
                   background: filter === type ? '#014b89' : '#f9fafb',
                   color: filter === type ? 'white' : '#6b7280',
@@ -450,47 +448,47 @@ export default function LostFoundPage() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin mb-4" style={{ color: '#014b89' }} />
-            <p className="text-gray-600 font-medium">Loading items...</p>
+          <div className="flex flex-col items-center justify-center py-12 sm:py-16 md:py-20">
+            <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin mb-4" style={{ color: '#014b89' }} />
+            <p className="text-sm sm:text-base text-gray-600 font-medium">Loading items...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && !isLoading && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center mb-8">
-            <Search className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-red-700 mb-2">Failed to Load Items</h3>
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={fetchItems} className="bg-red-600 hover:bg-red-700 text-white">
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center mb-6 sm:mb-8">
+            <Search className="w-10 h-10 sm:w-12 sm:h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg sm:text-xl font-bold text-red-700 mb-2">Failed to Load Items</h3>
+            <p className="text-sm sm:text-base text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchItems} className="bg-red-600 hover:bg-red-700 text-white h-11 sm:h-12 text-sm sm:text-base">
               Try Again
             </Button>
           </div>
         )}
 
-        {/* Items Grid */}
+        {/* Items Grid - Mobile Optimized */}
         {!isLoading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {filteredItems.length === 0 ? (
-            <div className="col-span-full bg-white border-2 border-gray-200 rounded-3xl p-12 md:p-16 text-center shadow-lg">
+            <div className="col-span-full bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 md:p-16 text-center shadow-lg">
               <div 
-                className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-4 sm:mb-6 flex items-center justify-center"
                 style={{ background: 'rgba(1, 75, 137, 0.1)' }}
               >
-                <Search className="w-10 h-10" style={{ color: '#014b89' }} />
+                <Search className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#014b89' }} />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">No items found</h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">No items found</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 max-w-md mx-auto">
                 No items match your search criteria. Try adjusting your filters or report a new item.
               </p>
               <Button
                 onClick={() => setShowForm(true)}
-                className="text-white font-bold gap-2 h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                className="text-white font-bold gap-2 h-11 sm:h-12 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
                 style={{ background: '#014b89' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#012d52'}
                 onMouseLeave={(e) => e.currentTarget.style.background = '#014b89'}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 Report an Item
               </Button>
             </div>
@@ -503,28 +501,28 @@ export default function LostFoundPage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-gray-300 hover:shadow-xl transition-all duration-300 animate-fade-in"
+                  className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-gray-300 hover:shadow-xl transition-all duration-300 animate-fade-in"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-4xl">{getCategoryIcon(item.category)}</span>
-                        <h3 className="text-xl font-bold text-gray-900">{item.item_name}</h3>
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                        <span className="text-2xl sm:text-3xl md:text-4xl flex-shrink-0">{getCategoryIcon(item.category)}</span>
+                        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 break-words">{item.item_name}</h3>
                       </div>
-                      <p className="text-gray-600 leading-relaxed mb-3">{item.description}</p>
+                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-2 sm:mb-3 break-words">{item.description}</p>
                       {item.notes && (
-                        <p className="text-sm text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-gray-200">
+                        <p className="text-xs sm:text-sm text-gray-500 italic bg-gray-50 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-gray-200 break-words">
                           💡 {item.notes}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  {/* Tags - Mobile Optimized */}
+                  <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
                     <span 
-                      className="px-4 py-2 rounded-xl text-sm font-bold border-2"
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold border-2"
                       style={{ 
                         background: typeColor.bg, 
                         color: typeColor.text,
@@ -533,90 +531,94 @@ export default function LostFoundPage() {
                     >
                       {item.type === 'lost' ? '❌ Lost' : '✅ Found'}
                     </span>
-                    <span className="px-4 py-2 rounded-xl text-sm bg-gray-100 text-gray-700 font-semibold border-2 border-gray-200 capitalize">
+                    <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm bg-gray-100 text-gray-700 font-semibold border-2 border-gray-200 capitalize">
                       {item.category}
                     </span>
                   </div>
 
-                  {/* Location and Date */}
-                  <div className="text-sm text-gray-600 border-t-2 border-gray-100 pt-4 pb-4 space-y-2">
+                  {/* Location and Date - Mobile Optimized */}
+                  <div className="text-xs sm:text-sm text-gray-600 border-t-2 border-gray-100 pt-3 sm:pt-4 pb-3 sm:pb-4 space-y-2">
                     {location && (
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 mt-0.5" style={{ color: '#f26918' }} />
-                        <div>
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" style={{ color: '#f26918' }} />
+                        <div className="flex-1 min-w-0">
                           <span className="font-semibold">{item.type === 'lost' ? 'Lost at:' : 'Found at:'}</span>
-                          <span className="ml-1">{location}</span>
+                          <span className="ml-1 break-words">{location}</span>
                         </div>
                       </div>
                     )}
                     {item.type === 'found' && item.current_location && item.current_location !== item.location_found && (
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 mt-0.5" style={{ color: '#10b981' }} />
-                        <div>
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" style={{ color: '#10b981' }} />
+                        <div className="flex-1 min-w-0">
                           <span className="font-semibold">Currently at:</span>
-                          <span className="ml-1">{item.current_location}</span>
+                          <span className="ml-1 break-words">{item.current_location}</span>
                         </div>
                       </div>
                     )}
                     {dateDisplay && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-gray-500" />
-                        <span className="font-semibold">{item.type === 'lost' ? 'Lost on:' : 'Found on:'}</span>
-                        <span>{new Date(dateDisplay).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      <div className="flex items-start gap-2">
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 text-gray-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold">{item.type === 'lost' ? 'Lost on:' : 'Found on:'}</span>
+                          <span className="ml-1">{new Date(dateDisplay).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        </div>
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <span className="font-semibold">Reported:</span>
-                      <span>{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <div className="flex items-start gap-2">
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 text-gray-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold">Reported:</span>
+                        <span className="ml-1">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Contact Info */}
+                  {/* Contact Info - Mobile Optimized */}
                   {item.contact_info && (
-                    <div className="mb-4 px-4 py-3 bg-blue-50 border-2 border-blue-100 rounded-xl">
-                      <p className="text-sm font-semibold text-blue-700">
+                    <div className="mb-3 sm:mb-4 px-3 sm:px-4 py-2 sm:py-3 bg-blue-50 border-2 border-blue-100 rounded-lg sm:rounded-xl">
+                      <p className="text-xs sm:text-sm font-semibold text-blue-700 break-words">
                         📞 Contact: {item.contact_info}
                       </p>
                     </div>
                   )}
 
-                  {/* Status */}
-                  <div className="mb-4">
+                  {/* Status - Mobile Optimized */}
+                  <div className="mb-3 sm:mb-4">
                     {item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' ? (
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-                        <CheckCircle className="w-5 h-5" style={{ color: '#10b981' }} />
-                        <span className="text-sm font-bold" style={{ color: '#10b981' }}>
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl border-2" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" style={{ color: '#10b981' }} />
+                        <span className="text-xs sm:text-sm font-bold" style={{ color: '#10b981' }}>
                           {item.status === 'returned' ? 'Returned to Owner' : 'Claimed'}
                         </span>
                         {item.claimed_at && (
-                          <span className="text-xs text-gray-600 ml-2">
-                            on {new Date(item.claimed_at).toLocaleDateString()}
+                          <span className="text-[10px] sm:text-xs text-gray-600 ml-2">
+                            on {new Date(item.claimed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: 'rgba(242, 105, 24, 0.1)', borderColor: 'rgba(242, 105, 24, 0.3)' }}>
-                        <span className="text-sm font-bold" style={{ color: '#f26918' }}>Available</span>
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl border-2" style={{ background: 'rgba(242, 105, 24, 0.1)', borderColor: 'rgba(242, 105, 24, 0.3)' }}>
+                        <span className="text-xs sm:text-sm font-bold" style={{ color: '#f26918' }}>Available</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Action Button */}
+                  {/* Action Button - Mobile Optimized */}
                   <Button
                     disabled={item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' || item.reported_by === user?.id}
                     onClick={() => handleClaim(item.id)}
-                    className="w-full text-white font-bold h-12 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+                    className="w-full text-white font-bold h-11 sm:h-12 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-2 sm:mb-3 text-xs sm:text-sm"
                     style={{ background: (item.status === 'claimed' || item.status === 'closed' || item.status === 'returned' || item.reported_by === user?.id) ? '#9ca3af' : '#014b89' }}
                   >
                     {item.reported_by === user?.id ? 'Your Item' : item.type === 'lost' ? 'I Found This Item' : 'This Is My Item'}
                   </Button>
 
-                  {/* Posted By */}
-                  <div className="text-xs text-gray-500 text-center font-medium">
+                  {/* Posted By - Mobile Optimized */}
+                  <div className="text-[10px] sm:text-xs text-gray-500 text-center font-medium break-words">
                     Posted by: <span className="font-bold text-gray-700">{item.reporter?.full_name || 'Anonymous'}</span>
                     {item.reporter?.phone_number && (
-                      <span className="ml-2">• 📞 {item.reporter.phone_number}</span>
+                      <span className="ml-2 whitespace-nowrap">• 📞 {item.reporter.phone_number}</span>
                     )}
                   </div>
                 </div>
