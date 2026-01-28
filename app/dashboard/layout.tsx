@@ -80,9 +80,9 @@ export default function DashboardLayout({
   const roleColor = '#014b89'
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white h-screen overflow-hidden flex flex-col">
       {/* Mobile Header */}
-      <header className="md:hidden border-b border-gray-200 bg-white/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between shadow-sm fixed top-0 inset-x-0 z-50">
+      <header className="md:hidden border-b border-gray-200 bg-white/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-50">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image 
             src="/logo/logo.png" 
@@ -101,12 +101,12 @@ export default function DashboardLayout({
         </button>
       </header>
 
-      <div className="flex pt-14 md:pt-0">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
           className={`${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:translate-x-0 transition-transform duration-300 ease-in-out w-72 sm:w-80 border-r-2 border-gray-200 bg-white fixed md:relative h-screen z-40 overflow-y-auto`}
+          } md:translate-x-0 transition-transform duration-300 ease-in-out w-72 sm:w-80 border-r-2 border-gray-200 bg-white fixed md:static h-full z-40 overflow-y-auto flex-shrink-0`}
         >
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 h-full flex flex-col">
             {/* Logo */}
@@ -202,7 +202,7 @@ export default function DashboardLayout({
         )}
 
         {/* Main Content */}
-        <main className="flex-1 w-full min-h-screen">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>
