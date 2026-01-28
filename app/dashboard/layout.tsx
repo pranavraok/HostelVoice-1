@@ -84,10 +84,14 @@ export default function DashboardLayout({
       {/* Mobile Header */}
       <header className="md:hidden border-b border-gray-200 bg-white/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between shadow-sm fixed top-0 inset-x-0 z-50">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: roleColor }}>
-            <span className="text-white font-bold text-xs">HV</span>
-          </div>
-          <span className="font-bold text-gray-900 text-base">HostelVoice</span>
+          <Image 
+            src="/logo/logo.png" 
+            alt="HostelVoice Logo" 
+            width={2000} 
+            height={70} 
+            className="h-14 w-auto"
+            priority
+          />
         </Link>
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -112,7 +116,7 @@ export default function DashboardLayout({
                 alt="HostelVoice Logo" 
                 width={2000} 
                 height={70} 
-                className="h-10 sm:h-12 w-auto"
+                className="h-20 sm:h-12 w-auto"
                 priority
               />
             </Link>
