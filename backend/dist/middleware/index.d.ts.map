@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/middleware/index.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,kBAAkB,CAAC;AAClD,OAAO,EACL,WAAW,EACX,WAAW,EACX,aAAa,EACb,SAAS,EACT,SAAS,EACT,OAAO,EACP,mBAAmB,GACpB,MAAM,kBAAkB,CAAC;AAC1B,OAAO,EAAE,YAAY,EAAE,eAAe,EAAE,YAAY,EAAE,QAAQ,EAAE,MAAM,gBAAgB,CAAC"}

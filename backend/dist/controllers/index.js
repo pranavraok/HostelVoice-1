@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UploadController = exports.AdminController = exports.AnalyticsController = exports.NotificationsController = exports.ResidentsController = exports.LostFoundController = exports.AnnouncementsController = exports.IssuesController = void 0;
+var issues_controller_1 = require("./issues.controller");
+Object.defineProperty(exports, "IssuesController", { enumerable: true, get: function () { return issues_controller_1.IssuesController; } });
+var announcements_controller_1 = require("./announcements.controller");
+Object.defineProperty(exports, "AnnouncementsController", { enumerable: true, get: function () { return announcements_controller_1.AnnouncementsController; } });
+var lostfound_controller_1 = require("./lostfound.controller");
+Object.defineProperty(exports, "LostFoundController", { enumerable: true, get: function () { return lostfound_controller_1.LostFoundController; } });
+var residents_controller_1 = require("./residents.controller");
+Object.defineProperty(exports, "ResidentsController", { enumerable: true, get: function () { return residents_controller_1.ResidentsController; } });
+var notifications_controller_1 = require("./notifications.controller");
+Object.defineProperty(exports, "NotificationsController", { enumerable: true, get: function () { return notifications_controller_1.NotificationsController; } });
+var analytics_controller_1 = require("./analytics.controller");
+Object.defineProperty(exports, "AnalyticsController", { enumerable: true, get: function () { return analytics_controller_1.AnalyticsController; } });
+var admin_controller_1 = require("./admin.controller");
+Object.defineProperty(exports, "AdminController", { enumerable: true, get: function () { return admin_controller_1.AdminController; } });
+var upload_controller_1 = require("./upload.controller");
+Object.defineProperty(exports, "UploadController", { enumerable: true, get: function () { return upload_controller_1.UploadController; } });
+//# sourceMappingURL=index.js.map
