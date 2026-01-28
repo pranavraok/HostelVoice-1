@@ -14,23 +14,10 @@ export const metadata: Metadata = {
   description: 'Complete hostel management solution with role-based dashboards, issue tracking, announcements, and lost-found modules',
   generator: 'v0.app',
   metadataBase: new URL('https://hostelvoice.app'),
-  themeColor: '#00d9ff',
+  themeColor: '#014b89',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/logo/hostelvoicelogo.png',
+    apple: '/logo/hostelvoicelogo.png',
   },
 }
 
