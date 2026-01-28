@@ -32,14 +32,23 @@ export class AnnouncementsController {
       .single();
 
     if (error) {
+      console.error('[AnnouncementsController] Failed to create announcement:', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        user: user.id
+      });
       throw new ApiError(`Failed to create announcement: ${error.message}`, 500);
     }
 
-    // Create audit log
-    await AuditService.logAnnouncementAction(user, 'create', announcement.id, announcementData, req);
+    // Create audit log (fire and forget - shouldn't block response)
+    AuditService.logAnnouncementAction(user, 'create', announcement.id, announcementData, req)
+      .catch(err => console.error('[AnnouncementsController] Audit log failed:', err));
 
-    // Notify targeted users
-    await AnnouncementsController.notifyTargetedUsers(announcement);
+    // Notify targeted users (fire and forget - shouldn't block response)
+    AnnouncementsController.notifyTargetedUsers(announcement)
+      .catch(err => console.error('[AnnouncementsController] Notification failed:', err));
 
     sendCreated(res, 'Announcement created successfully', announcement);
   }
@@ -54,30 +63,43 @@ export class AnnouncementsController {
     target_role?: string;
     target_hostel?: string;
   }): Promise<void> {
-    let query = supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('approval_status', 'approved');
+    try {
+      let query = supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('approval_status', 'approved');
 
-    // Filter by target role
-    if (announcement.target_role && announcement.target_role !== 'all') {
-      query = query.eq('role', announcement.target_role);
-    }
+      // Filter by target role
+      if (announcement.target_role && announcement.target_role !== 'all') {
+        query = query.eq('role', announcement.target_role);
+      }
 
-    // Filter by target hostel
-    if (announcement.target_hostel) {
-      query = query.eq('hostel_name', announcement.target_hostel);
-    }
+      // Filter by target hostel
+      if (announcement.target_hostel) {
+        query = query.eq('hostel_name', announcement.target_hostel);
+      }
 
-    const { data: users } = await query;
+      const { data: users, error } = await query;
 
-    if (users && users.length > 0) {
-      await NotificationService.notifyNewAnnouncement(
-        users.map((u) => u.id),
-        announcement.id,
-        announcement.title,
-        announcement.priority
-      );
+      if (error) {
+        console.error('[AnnouncementsController] Failed to fetch users for notification:', {
+          error: error.message,
+          code: error.code,
+          announcementId: announcement.id
+        });
+        return;
+      }
+
+      if (users && users.length > 0) {
+        await NotificationService.notifyNewAnnouncement(
+          users.map((u) => u.id),
+          announcement.id,
+          announcement.title,
+          announcement.priority
+        );
+      }
+    } catch (error) {
+      console.error('[AnnouncementsController] Exception in notifyTargetedUsers:', error);
     }
   }
 

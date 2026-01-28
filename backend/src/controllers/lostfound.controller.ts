@@ -32,15 +32,24 @@ export class LostFoundController {
       .single();
 
     if (error) {
+      console.error('[LostFoundController] Failed to create item:', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        user: user.id
+      });
       throw new ApiError(`Failed to report item: ${error.message}`, 500);
     }
 
-    // Create audit log
-    await AuditService.logLostFoundAction(user, 'create', item.id, itemData, req);
+    // Create audit log (fire and forget - shouldn't block response)
+    AuditService.logLostFoundAction(user, 'create', item.id, itemData, req)
+      .catch(err => console.error('[LostFoundController] Audit log failed:', err));
 
-    // If found item, check for matching lost items and notify
+    // If found item, check for matching lost items and notify (fire and forget)
     if (data.type === 'found') {
-      await LostFoundController.checkForMatches(item);
+      LostFoundController.checkForMatches(item)
+        .catch(err => console.error('[LostFoundController] Match checking failed:', err));
     }
 
     sendCreated(res, `${data.type === 'lost' ? 'Lost' : 'Found'} item reported successfully`, item);
@@ -54,24 +63,37 @@ export class LostFoundController {
     item_name: string;
     category: string;
   }): Promise<void> {
-    // Find open lost items in the same category
-    const { data: potentialMatches } = await supabaseAdmin
-      .from('lost_found')
-      .select('id, reported_by, item_name')
-      .eq('type', 'lost')
-      .eq('status', 'open')
-      .eq('category', foundItem.category)
-      .limit(10);
+    try {
+      // Find open lost items in the same category
+      const { data: potentialMatches, error } = await supabaseAdmin
+        .from('lost_found')
+        .select('id, reported_by, item_name')
+        .eq('type', 'lost')
+        .eq('status', 'open')
+        .eq('category', foundItem.category)
+        .limit(10);
 
-    if (potentialMatches && potentialMatches.length > 0) {
-      // Notify each potential match owner
-      for (const match of potentialMatches) {
-        await NotificationService.notifyLostItemMatch(
-          match.reported_by,
-          foundItem.id,
-          foundItem.item_name
-        );
+      if (error) {
+        console.error('[LostFoundController] Failed to fetch potential matches:', {
+          error: error.message,
+          code: error.code,
+          itemId: foundItem.id
+        });
+        return;
       }
+
+      if (potentialMatches && potentialMatches.length > 0) {
+        // Notify each potential match owner
+        for (const match of potentialMatches) {
+          await NotificationService.notifyLostItemMatch(
+            match.reported_by,
+            foundItem.id,
+            foundItem.item_name
+          );
+        }
+      }
+    } catch (error) {
+      console.error('[LostFoundController] Exception in checkForMatches:', error);
     }
   }
 

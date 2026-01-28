@@ -24,7 +24,7 @@ export class AuditService {
     try {
       const { userId, action, entityType, entityId, oldData, newData, req } = data;
 
-      await supabaseAdmin.from('audit_logs').insert({
+      const { error } = await supabaseAdmin.from('audit_logs').insert({
         user_id: userId,
         action,
         entity_type: entityType,
@@ -34,9 +34,22 @@ export class AuditService {
         ip_address: req?.ip || req?.headers['x-forwarded-for'] || null,
         user_agent: req?.headers['user-agent'] || null,
       });
+
+      if (error) {
+        console.error('[AuditService] Failed to create audit log:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          userId,
+          action,
+          entityType,
+          entityId
+        });
+      }
     } catch (error) {
       // Log error but don't throw - audit logging shouldn't break the main flow
-      console.error('Audit log error:', error);
+      console.error('[AuditService] Exception in audit logging:', error);
     }
   }
 

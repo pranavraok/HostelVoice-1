@@ -20,7 +20,7 @@ export class NotificationService {
    */
   static async create(data: CreateNotificationData): Promise<void> {
     try {
-      await supabaseAdmin.from('notifications').insert({
+      const { error } = await supabaseAdmin.from('notifications').insert({
         user_id: data.userId,
         title: data.title,
         message: data.message,
@@ -29,8 +29,19 @@ export class NotificationService {
         reference_type: data.referenceType,
         is_read: false,
       });
+
+      if (error) {
+        console.error('[NotificationService] Failed to create notification:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          userId: data.userId,
+          type: data.type
+        });
+      }
     } catch (error) {
-      console.error('Failed to create notification:', error);
+      console.error('[NotificationService] Exception creating notification:', error);
     }
   }
 
@@ -42,6 +53,11 @@ export class NotificationService {
     notification: Omit<CreateNotificationData, 'userId'>
   ): Promise<void> {
     try {
+      if (!userIds || userIds.length === 0) {
+        console.log('[NotificationService] No users to notify, skipping bulk notification');
+        return;
+      }
+
       const notifications = userIds.map((userId) => ({
         user_id: userId,
         title: notification.title,
@@ -52,9 +68,20 @@ export class NotificationService {
         is_read: false,
       }));
 
-      await supabaseAdmin.from('notifications').insert(notifications);
+      const { error } = await supabaseAdmin.from('notifications').insert(notifications);
+
+      if (error) {
+        console.error('[NotificationService] Failed to create bulk notifications:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          userCount: userIds.length,
+          notificationType: notification.type
+        });
+      }
     } catch (error) {
-      console.error('Failed to create bulk notifications:', error);
+      console.error('[NotificationService] Exception creating bulk notifications:', error);
     }
   }
 

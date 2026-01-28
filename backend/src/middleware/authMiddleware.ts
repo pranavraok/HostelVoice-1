@@ -42,6 +42,11 @@ export async function authMiddleware(
     } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !authUser) {
+      console.error('[AuthMiddleware] Token verification failed:', {
+        error: authError?.message,
+        hasToken: !!token,
+        tokenLength: token?.length
+      });
       sendError(res, 'Invalid or expired access token', 401);
       return;
     }
@@ -54,6 +59,11 @@ export async function authMiddleware(
       .single();
 
     if (profileError || !userProfile) {
+      console.error('[AuthMiddleware] User profile fetch failed:', {
+        error: profileError?.message,
+        code: profileError?.code,
+        userId: authUser.id
+      });
       sendError(res, 'User profile not found. Please complete registration.', 404);
       return;
     }
