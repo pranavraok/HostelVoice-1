@@ -106,47 +106,50 @@ export default function DashboardLayout({
         <aside
           className={`${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:translate-x-0 transition-transform duration-300 ease-in-out w-72 sm:w-80 border-r-2 border-gray-200 bg-white fixed md:static h-full z-40 overflow-y-auto flex-shrink-0`}
+          } md:translate-x-0 transition-transform duration-300 ease-in-out w-72 sm:w-80 border-r-2 border-gray-200 bg-white fixed md:static h-full z-40 overflow-hidden flex-shrink-0`}
         >
-          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 h-full flex flex-col">
-            {/* Logo */}
-            <Link href="/dashboard" className="hidden md:flex items-center gap-3 hover:opacity-80 transition-opacity mb-2">
-              <Image 
-                src="/logo/logo.png" 
-                alt="HostelVoice Logo" 
-                width={2000} 
-                height={70} 
-                className="h-20 sm:h-12 w-auto"
-                priority
-              />
-            </Link>
+          <div className="h-full flex flex-col">
+            {/* TOP SECTION - Fixed: Logo and User Profile */}
+            <div className="flex-shrink-0 p-4 sm:p-6 space-y-4 sm:space-y-6">
+              {/* Logo */}
+              <Link href="/dashboard" className="hidden md:flex items-center gap-3 hover:opacity-80 transition-opacity mb-2">
+                <Image 
+                  src="/logo/logo.png" 
+                  alt="HostelVoice Logo" 
+                  width={2000} 
+                  height={70} 
+                  className="h-20 sm:h-12 w-auto"
+                  priority
+                />
+              </Link>
 
-            {/* User Info Card */}
-            <div className="rounded-xl sm:rounded-2xl p-4 sm:p-5 border-2 shadow-lg" style={{ borderColor: `${roleColor}20`, background: `${roleColor}05` }}>
-              <div className="mb-2 sm:mb-3">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Account</p>
-                <p className="font-bold text-base sm:text-lg text-gray-900 truncate">{user.name}</p>
-                <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">{user.email || 'user@hostelvoice.com'}</p>
-              </div>
-              <div className="flex items-center gap-2 pt-2 sm:pt-3 border-t border-gray-200">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#10b981' }}></div>
-                <span className="text-xs text-gray-600 font-medium truncate">{user.hostelName}</span>
-              </div>
-              {user.roomNumber && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Home className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                  <span className="text-xs text-gray-600 font-medium">Room {user.roomNumber}</span>
+              {/* User Info Card */}
+              <div className="rounded-xl sm:rounded-2xl p-4 sm:p-5 border-2 shadow-lg" style={{ borderColor: `${roleColor}20`, background: `${roleColor}05` }}>
+                <div className="mb-2 sm:mb-3">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Account</p>
+                  <p className="font-bold text-base sm:text-lg text-gray-900 truncate">{user.name}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">{user.email || 'user@hostelvoice.com'}</p>
                 </div>
-              )}
-              <div className="mt-2 sm:mt-3">
-                <div className="inline-flex text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-white" style={{ background: roleColor }}>
-                  {user.role.toUpperCase()}
+                <div className="flex items-center gap-2 pt-2 sm:pt-3 border-t border-gray-200">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#10b981' }}></div>
+                  <span className="text-xs text-gray-600 font-medium truncate">{user.hostelName}</span>
+                </div>
+                {user.roomNumber && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Home className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-600 font-medium">Room {user.roomNumber}</span>
+                  </div>
+                )}
+                <div className="mt-2 sm:mt-3">
+                  <div className="inline-flex text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-white" style={{ background: roleColor }}>
+                    {user.role.toUpperCase()}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="space-y-2 flex-1">
+            {/* MIDDLE SECTION - Scrollable: Navigation */}
+            <nav className="flex-1 overflow-y-auto px-4 sm:px-6 space-y-2 scrollbar-thin">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 px-2">Navigation</p>
               {menuItems.map((item) => {
                 const Icon = item.icon
@@ -177,16 +180,16 @@ export default function DashboardLayout({
               })}
             </nav>
 
-            {/* Logout */}
-            <div className="pt-3 sm:pt-4 border-t-2 border-gray-200">
+            {/* BOTTOM SECTION - Fixed: Logout */}
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 border-t-2 border-gray-200">
               <Button
                 onClick={() => {
                   logout()
                   router.push('/')
                 }}
-                className="w-full justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 font-semibold transition-all duration-200 h-10 sm:h-12 rounded-lg sm:rounded-xl text-sm"
+                className="w-full justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 font-semibold transition-all duration-200 h-9 rounded-lg text-sm"
               >
-                <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                <LogOut className="w-4 h-4" />
                 Logout
               </Button>
             </div>
