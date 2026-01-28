@@ -2,18 +2,31 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { residentsApi, adminApi, Resident, ApiError } from '@/lib/api'
+import { residentsApi, ApiError } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Users, Phone, Mail, MapPin, Loader2, RefreshCw, User } from 'lucide-react'
 import { toast } from 'sonner'
 
+// Interface for user data from backend
+interface UserData {
+  id: string
+  full_name: string
+  email: string
+  phone_number: string
+  hostel_name: string
+  room_number: string
+  student_id?: string
+  approval_status: string
+  created_at: string
+}
+
 export default function ResidentsPage() {
   const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
-  const [residents, setResidents] = useState<Resident[]>([])
-  const [myProfile, setMyProfile] = useState<Resident | null>(null)
+  const [residents, setResidents] = useState<UserData[]>([])
+  const [myProfile, setMyProfile] = useState<UserData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,42 +36,19 @@ export default function ResidentsPage() {
     setError(null)
 
     try {
-      // Use the new unified residents API endpoint
+      // Use the unified residents API endpoint
       // Backend handles role-based filtering automatically
       const response = await residentsApi.getAll(1, 1000)
       
       if (user.role === 'student') {
         // For students, backend returns only their own record
         if (response.data && response.data.length > 0) {
-          // Map to Resident type for student profile
-          const studentData = response.data[0]
-          setMyProfile({
-            id: studentData.id,
-            full_name: studentData.full_name,
-            email: studentData.email,
-            phone: studentData.phone_number,
-            room_number: studentData.room_number,
-            hostel_name: studentData.hostel_name,
-            role: 'student',
-            is_approved: studentData.approval_status === 'approved',
-            issue_count: 0
-          })
+          setMyProfile(response.data[0] as unknown as UserData)
         }
       } else {
         // For caretakers and admins, backend returns filtered students
         if (response.data) {
-          const students = response.data.map((student: any) => ({
-            id: student.id,
-            full_name: student.full_name,
-            email: student.email,
-            phone: student.phone_number,
-            room_number: student.room_number,
-            hostel_name: student.hostel_name,
-            role: 'student',
-            is_approved: student.approval_status === 'approved',
-            issue_count: 0
-          }))
-          setResidents(students)
+          setResidents(response.data as unknown as UserData[])
         }
       }
     } catch (err) {
@@ -81,17 +71,17 @@ export default function ResidentsPage() {
       resident.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && resident.is_approved) ||
-      (filterStatus === 'inactive' && !resident.is_approved)
+      (filterStatus === 'active' && resident.approval_status === 'approved') ||
+      (filterStatus === 'inactive' && resident.approval_status === 'pending')
 
     return matchesSearch && matchesStatus
   })
 
   const stats = [
     { label: 'Total Residents', value: residents.length, color: '#014b89' },
-    { label: 'Approved', value: residents.filter(r => r.is_approved).length, color: '#10b981' },
-    { label: 'Pending', value: residents.filter(r => !r.is_approved).length, color: '#f26918' },
-    { label: 'Total Issues', value: residents.reduce((sum, r) => sum + (r.issue_count || 0), 0), color: '#6b7280' }
+    { label: 'Approved', value: residents.filter(r => r.approval_status === 'approved').length, color: '#10b981' },
+    { label: 'Pending', value: residents.filter(r => r.approval_status === 'pending').length, color: '#f26918' },
+    { label: 'Hostels', value: new Set(residents.map(r => r.hostel_name).filter(Boolean)).size, color: '#6b7280' }
   ]
 
   if (!user) return null
@@ -164,7 +154,7 @@ export default function ResidentsPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">{myProfile.full_name}</h2>
-                  <p className="text-gray-600">{myProfile.role?.charAt(0).toUpperCase() + myProfile.role?.slice(1)}</p>
+                  <p className="text-gray-600">Student</p>
                 </div>
               </div>
 
@@ -177,12 +167,12 @@ export default function ResidentsPage() {
                       <p className="font-semibold">{myProfile.email}</p>
                     </div>
                   </div>
-                  {myProfile.phone && (
+                  {myProfile.phone_number && (
                     <div className="flex items-center gap-3">
                       <Phone className="w-5 h-5" style={{ color: '#014b89' }} />
                       <div>
                         <p className="text-sm text-gray-500">Phone</p>
-                        <p className="font-semibold">{myProfile.phone}</p>
+                        <p className="font-semibold">{myProfile.phone_number}</p>
                       </div>
                     </div>
                   )}
@@ -213,12 +203,12 @@ export default function ResidentsPage() {
                 <span 
                   className="px-4 py-2 rounded-xl text-sm font-bold border-2"
                   style={
-                    myProfile.is_approved
+                    myProfile.approval_status === 'approved'
                       ? { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }
                       : { background: 'rgba(242, 105, 24, 0.1)', color: '#f26918', borderColor: 'rgba(242, 105, 24, 0.3)' }
                   }
                 >
-                  {myProfile.is_approved ? '✓ Approved' : '⏳ Pending Approval'}
+                  {myProfile.approval_status === 'approved' ? '✓ Approved' : '⏳ Pending Approval'}
                 </span>
               </div>
             </div>
@@ -340,7 +330,7 @@ export default function ResidentsPage() {
                   <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Contact</th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Hostel</th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Issues</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-600 uppercase tracking-wide">Student ID</th>
                 </tr>
               </thead>
               <tbody>
@@ -372,10 +362,10 @@ export default function ResidentsPage() {
                             {resident.email}
                           </a>
                         </div>
-                        {resident.phone && (
+                        {resident.phone_number && (
                           <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                             <Phone className="w-4 h-4" />
-                            {resident.phone}
+                            {resident.phone_number}
                           </div>
                         )}
                       </div>
@@ -387,21 +377,21 @@ export default function ResidentsPage() {
                       <span 
                         className="px-3 py-1.5 rounded-xl text-xs font-bold border-2"
                         style={
-                          resident.is_approved
+                          resident.approval_status === 'approved'
                             ? { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }
                             : { background: 'rgba(242, 105, 24, 0.1)', color: '#f26918', borderColor: 'rgba(242, 105, 24, 0.3)' }
                         }
                       >
-                        {resident.is_approved ? '✓ Approved' : 'Pending'}
+                        {resident.approval_status === 'approved' ? '✓ Approved' : 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      {(resident.issue_count || 0) > 0 ? (
+                      {resident.student_id ? (
                         <span className="px-3 py-1.5 rounded-xl text-xs font-bold border-2" style={{ background: 'rgba(1, 75, 137, 0.1)', color: '#014b89', borderColor: 'rgba(1, 75, 137, 0.3)' }}>
-                          {resident.issue_count} reported
+                          {resident.student_id}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-500 font-medium">None</span>
+                        <span className="text-xs text-gray-500 font-medium">-</span>
                       )}
                     </td>
                   </tr>
