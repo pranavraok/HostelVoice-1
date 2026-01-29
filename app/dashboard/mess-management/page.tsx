@@ -402,14 +402,13 @@ export default function MessManagementPage() {
     );
   };
 
-  const averageRating = feedbackStats 
-    ? (feedbackStats.average_rating || 0).toFixed(1) 
+  // Calculate average rating from the actual feedback list being displayed
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, f) => sum + f.overall_rating, 0) / feedbacks.length).toFixed(1)
     : "0.0";
   
-  const satisfactionPercent = feedbackStats
-    ? Math.round((feedbackStats.total_count > 0 
-        ? (feedbackStats.average_rating / 5) * 100 
-        : 0))
+  const satisfactionPercent = feedbacks.length > 0
+    ? Math.round((parseFloat(averageRating) / 5) * 100)
     : 0;
   
   const pendingCount = feedbacks.filter(f => f.status === 'pending').length;
