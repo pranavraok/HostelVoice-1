@@ -39,7 +39,8 @@ import {
   Youtube,
   MapPin,
   Menu,
-  X
+  X,
+  UtensilsCrossed
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -387,15 +388,15 @@ export default function LandingPage() {
                   <p className="text-xs font-bold text-gray-900">Community</p>
                 </div>
 
-                {/* 5. Finance - Bottom Right */}
+                {/* 5. Mess - Bottom Right */}
                 <div 
                   className="absolute w-28 h-28 rounded-full bg-white shadow-xl flex flex-col items-center justify-center border-2 animate-fade-in"
                   style={{ right: '5%', bottom: '12%', animationDelay: '1.8s', borderColor: 'rgba(1, 75, 137, 0.2)' }}
                 >
                   <div className="w-12 h-12 rounded-full flex items-center justify-center mb-1" style={{ background: 'rgba(1, 75, 137, 0.1)' }}>
-                    <CreditCard className="w-6 h-6" style={{ color: '#014b89' }} />
+                    <UtensilsCrossed className="w-6 h-6" style={{ color: '#014b89' }} />
                   </div>
-                  <p className="text-xs font-bold text-gray-900">Finance</p>
+                  <p className="text-xs font-bold text-gray-900">Mess</p>
                 </div>
 
                 {/* 6. Operations - Bottom Center */}
@@ -454,44 +455,65 @@ export default function LandingPage() {
             {[
               {
                 icon: UserCheck,
-                title: 'Student Onboarding',
-                description: 'Automated onboarding with digital paperwork, room allocation, and seamless approvals',
+                title: 'User Approval System',
+                description: 'Admin-controlled registration with approval workflow for students and caretakers',
                 color: '#014b89',
-                features: ['Digital forms', 'Auto allocation', 'Fast approvals']
+                features: ['Pending requests', 'Approve/Reject', 'Role management']
+              },
+              {
+                icon: Users,
+                title: 'Resident Directory',
+                description: 'Comprehensive student database with hostel details, room info, and approval status',
+                color: '#f26918',
+                features: ['Student profiles', 'Hostel info', 'Contact details']
               },
               {
                 icon: ClipboardList,
-                title: 'Maintenance Requests',
-                description: 'Track, manage, and resolve issues 50% faster with automated workflows',
+                title: 'Issue Tracking',
+                description: 'Complete complaint management system with categories, priorities, and assignment tracking',
+                color: '#014b89',
+                features: ['Report issues', 'Assign staff', 'Status updates']
+              },
+              {
+                icon: Bell,
+                title: 'Announcements',
+                description: 'Broadcast important updates and notices to students with pin and target audience features',
                 color: '#f26918',
-                features: ['Issue logging', 'Status tracking', '3-day resolution']
+                features: ['Post updates', 'Pin important', 'Target groups']
+              },
+              {
+                icon: Calendar,
+                title: 'Leave Management',
+                description: 'Streamlined leave application system for students with instant approvals and tracking',
+                color: '#014b89',
+                features: ['Digital requests', 'Quick approvals', 'Status tracking']
+              },
+              {
+                icon: UtensilsCrossed,
+                title: 'Mess Management',
+                description: 'Complete mess operations with weekly menus, student feedback, and menu downloads',
+                color: '#f26918',
+                features: ['Weekly menu', 'Feedback system', 'PDF downloads']
+              },
+              {
+                icon: Search,
+                title: 'Lost & Found',
+                description: 'Digital system to report lost items, register found items, and match them automatically',
+                color: '#014b89',
+                features: ['Report items', 'Search database', 'Auto-matching']
               },
               {
                 icon: BarChart3,
-                title: 'AI Analytics',
-                description: 'Data-driven insights with AI-powered recommendations for better decisions',
-                color: '#014b89',
-                features: ['Real-time data', 'Smart reports', 'Trend analysis']
-              },
-              {
-                icon: MessageSquare,
-                title: 'Digital Communication',
-                description: 'Instant announcements, community chat, and seamless hostel-wide updates',
+                title: 'Real-Time Analytics',
+                description: 'Visual dashboard with charts showing issue trends, user statistics, and resolution rates',
                 color: '#f26918',
-                features: ['Announcements', 'Group chat', 'Notifications']
-              },
-              {
-                icon: Shield,
-                title: 'Security & Safety',
-                description: 'Advanced security features with digital check-ins and visitor management',
-                color: '#014b89',
-                features: ['QR access', 'Visitor logs', 'Safety alerts']
+                features: ['Live metrics', 'Trend charts', 'Performance data']
               },
               {
                 icon: Settings,
-                title: 'Admin Control',
-                description: 'Complete system control with user management and customizable settings',
-                color: '#f26918',
+                title: 'Admin Control Panel',
+                description: 'Complete system management with user roles, permissions, and hostel configuration',
+                color: '#014b89',
                 features: ['User roles', 'Permissions', 'System config']
               }
             ].map((feature, idx) => (
@@ -542,63 +564,79 @@ export default function LandingPage() {
             {[
               {
                 role: 'Students',
-                icon: Users,
+                icon: GraduationCap,
                 color: '#014b89',
-                description: 'Seamless hostel experience with easy access to all services',
+                gradient: 'from-[#014b89] to-[#0369a1]',
+                description: 'Complete hostel living experience with all essential services at your fingertips',
                 features: [
-                  { icon: Search, text: 'Browse announcements & updates' },
-                  { icon: ClipboardList, text: 'Report & track issues' },
-                  { icon: MessageSquare, text: 'Community chat & forums' },
-                  { icon: Calendar, text: 'Manage leaves & attendance' }
+                  { icon: ClipboardList, text: 'Report issues & track status' },
+                  { icon: Bell, text: 'Stay updated with announcements' },
+                  { icon: Calendar, text: 'Apply & manage leave requests' },
+                  { icon: UtensilsCrossed, text: 'View mess menu & give feedback' },
+                  { icon: Search, text: 'Lost & found services' },
+                  { icon: Home, text: 'View hostel & room details' }
                 ]
               },
               {
                 role: 'Caretakers',
-                icon: UserCheck,
+                icon: UserCog,
                 color: '#014b89',
-                description: 'Efficient tools to manage residents and resolve issues quickly',
+                gradient: 'from-[#014b89] to-[#0369a1]',
+                description: 'Powerful management tools to oversee residents and maintain hostel operations efficiently',
                 features: [
-                  { icon: ClipboardList, text: 'Track & manage requests' },
-                  { icon: Bell, text: 'Send instant notifications' },
-                  { icon: Users, text: 'Resident directory access' },
-                  { icon: BarChart3, text: 'Performance analytics' }
+                  { icon: CheckCircle2, text: 'Review & resolve student issues' },
+                  { icon: Users, text: 'Assign tasks to staff members' },
+                  { icon: Bell, text: 'Post announcements & updates' },
+                  { icon: Users, text: 'Access resident directory' },
+                  { icon: Calendar, text: 'Review student leave requests' },
+                  { icon: UtensilsCrossed, text: 'Manage mess menu & feedback' }
                 ]
               },
               {
                 role: 'Administrators',
-                icon: Shield,
+                icon: ShieldCheck,
                 color: '#014b89',
-                description: 'Complete oversight with powerful analytics and control',
+                gradient: 'from-[#014b89] to-[#0369a1]',
+                description: 'Full system control with comprehensive analytics, user management, and oversight capabilities',
                 features: [
-                  { icon: BarChart3, text: 'System-wide analytics' },
-                  { icon: Settings, text: 'User & role management' },
-                  { icon: TrendingUp, text: 'Performance reports' },
-                  { icon: Lock, text: 'Security & permissions' }
+                  { icon: UserCheck, text: 'Approve/reject user registrations' },
+                  { icon: BarChart3, text: 'Real-time analytics & insights' },
+                  { icon: Settings, text: 'Manage roles & permissions' },
+                  { icon: Clock, text: 'Review caretaker leave requests' },
+                  { icon: TrendingUp, text: 'Monitor system performance' },
+                  { icon: Lock, text: 'Security & audit logs' }
                 ]
               }
             ].map((role, idx) => (
               <div 
                 key={idx}
-                className="bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-100 hover:border-[#014b89] transition-all hover-lift"
+                className="bg-white rounded-3xl p-8 shadow-2xl border border-gray-200 hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden"
               >
-                <div 
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg mb-6 animate-pulse-glow"
-                  style={{ background: role.color }}
-                >
-                  <role.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">{role.role}</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">{role.description}</p>
-                <ul className="space-y-3">
-                  {role.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-gray-700">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${role.color}10` }}>
-                        <feature.icon className="w-4 h-4" style={{ color: role.color }} />
+                {/* Gradient overlay on hover */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-3xl`}></div>
+                
+                <div className="relative z-10">
+                  <div 
+                    className={`w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl mb-6 bg-gradient-to-br ${role.gradient} group-hover:scale-110 transition-transform duration-300`}
+                  >
+                    <role.icon className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3 group-hover:text-[#014b89] transition-colors">{role.role}</h3>
+                  <p className="text-gray-600 mb-8 leading-relaxed text-base">{role.description}</p>
+                  <div className="space-y-4">
+                    {role.features.map((feature, i) => (
+                      <div key={i} className="flex items-start gap-3 group/item">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover/item:scale-110" 
+                          style={{ background: `${role.color}15` }}
+                        >
+                          <feature.icon className="w-5 h-5" style={{ color: role.color }} />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 pt-2 group-hover/item:text-gray-900 transition-colors">{feature.text}</span>
                       </div>
-                      <span className="text-sm font-medium">{feature.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -610,18 +648,18 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: '#014b89' }}>
-              Get Started in{' '}
-              <span style={{ color: '#f26918' }}>4 Simple Steps</span>
+              How to{' '}
+              <span style={{ color: '#f26918' }}>Get Started</span>
             </h2>
-            <p className="text-lg text-gray-600">From signup to full deployment in minutes</p>
+            <p className="text-lg text-gray-600">Join your college hostel management system in 4 easy steps</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { step: '1', icon: UserCheck, title: 'Register', desc: 'Create your account instantly', color: '#014b89' },
-              { step: '2', icon: Settings, title: 'Configure', desc: 'Set up your hostel details', color: '#f26918' },
-              { step: '3', icon: Users, title: 'Add Users', desc: 'Invite students & staff', color: '#014b89' },
-              { step: '4', icon: Zap, title: 'Go Live', desc: 'Start managing efficiently', color: '#f26918' }
+              { step: '1', icon: UserCheck, title: 'Sign Up', desc: 'Register with your college email', color: '#014b89' },
+              { step: '2', icon: Clock, title: 'Get Approved', desc: 'Wait for admin approval', color: '#f26918' },
+              { step: '3', icon: Home, title: 'Access Dashboard', desc: 'Login to your personalized dashboard', color: '#014b89' },
+              { step: '4', icon: Zap, title: 'Start Using', desc: 'Report issues, apply leave & more', color: '#f26918' }
             ].map((item, idx) => (
               <div key={idx} className="relative group">
                 {/* Connecting Line */}
@@ -666,31 +704,39 @@ export default function LandingPage() {
             
             <div className="relative z-10">
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                Transform Your Hostel Management Today
+                Join Your College Hostel Community
               </h2>
               <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-                Experience the power of automation and see why institutions across India trust HostelVoice for their hostel operations.
+                Connect with your hostel community, manage your stay efficiently, and access all services from a single platform. Sign up today and get started!
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/register">
                   <Button size="lg" className="bg-white hover:bg-gray-50 border-0 px-10 shadow-xl font-bold text-base" style={{ color: '#014b89' }}>
-                    Get Started Now
+                    Register Now
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Link href="/contact">
-                  <Button size="lg" className="border-2 text-white hover:bg-white/10 font-semibold text-base" style={{ borderColor: '#f26918', color: '#f26918', background: 'transparent' }}>
-                    Schedule Demo
-                    <Calendar className="ml-2 w-5 h-5" />
+                <Link href="/login">
+                  <Button size="lg" className="border-2 text-white hover:bg-white/10 font-semibold text-base" style={{ borderColor: 'white', color: 'white', background: 'transparent' }}>
+                    Already a Member? Sign In
+                    <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
               </div>
 
-              <div className="flex items-center justify-center gap-8 mt-10 pt-8 border-t border-white/20">
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-10 pt-8 border-t border-white/20">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-white" />
-                  <span className="text-sm text-white font-medium">Setup in minutes</span>
+                  <span className="text-sm text-white font-medium">Quick registration</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                  <span className="text-sm text-white font-medium">Instant access</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                  <span className="text-sm text-white font-medium">24/7 support</span>
                 </div>
               </div>
             </div>
