@@ -50,34 +50,49 @@ export interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Global flag to prevent duplicate profile loads
+// This is outside the component to persist across re-renders
+let isLoadingProfile = false
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  // Initialize auth from Supabase
+  // Simple initialization - no refs, no guards, no race conditions
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('[AuthProvider] Initializing auth...')
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user) {
+          console.log('[AuthProvider] Session found, loading profile')
           await loadUserProfile(session.user)
+        } else {
+          console.log('[AuthProvider] No session found')
         }
       } catch (error) {
-        console.error('Error loading session:', error)
+        console.error('[AuthProvider] Error loading session:', error)
       } finally {
+        // CRITICAL: This ALWAYS runs, guaranteeing isLoading becomes false
+        console.log('[AuthProvider] Auth initialization complete')
         setIsLoading(false)
       }
     }
 
     initAuth()
 
-    // Listen for auth changes
+    // Listen for auth changes - simple event handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AuthProvider] Auth state changed:', event)
+      
       if (event === 'SIGNED_IN' && session?.user) {
+        // Load profile for sign-in events
+        // loadUserProfile has its own deduplication
         await loadUserProfile(session.user)
       } else if (event === 'SIGNED_OUT') {
+        console.log('[AuthProvider] User signed out')
         setUser(null)
       }
     })
@@ -87,57 +102,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const loadUserProfile = async (authUser: SupabaseUser, retryCount = 0) => {
+  const loadUserProfile = async (authUser: SupabaseUser) => {
+    // Simple deduplication: if already loading, skip
+    // This prevents duplicate calls from initAuth and onAuthStateChange
+    if (isLoadingProfile) {
+      console.log('[loadUserProfile] Already loading, skipping duplicate call')
+      return
+    }
+
     try {
-      console.log('loadUserProfile called for:', authUser.id, 'retry:', retryCount)
-      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-      console.log('Has Anon Key:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      isLoadingProfile = true
+      console.log('[loadUserProfile] Loading profile for:', authUser.id)
       
-      // Validate Supabase connection
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error('Missing Supabase environment variables')
-        return
-      }
-      
-      // Query without artificial timeout - let Supabase handle its own timeouts
-      const startTime = Date.now()
       const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single()
-      
-      const queryDuration = Date.now() - startTime
-      console.log(`Profile query completed in ${queryDuration}ms:`, { profile, error })
 
       if (error) {
-        // Log all error details for debugging
-        console.error('Error loading user profile:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          statusCode: error.statusCode,
-          fullError: JSON.stringify(error)
-        })
-        
-        // Check if it's a network/connection error and retry
-        const isNetworkError = !error.code || error.message?.includes('fetch') || error.message?.includes('network')
-        if (isNetworkError && retryCount < 2) {
-          console.log(`Network error detected, retrying (attempt ${retryCount + 2}/3)...`)
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          return loadUserProfile(authUser, retryCount + 1)
-        }
-        
-        // If error is PGRST116 (not found) or after retries, continue without user
+        console.error('[loadUserProfile] Error:', error.message)
+        // Don't throw - just return, let auth continue
         return
       }
 
       if (profile) {
-        const userData = {
+        const userData: User = {
           id: profile.id,
           email: profile.email,
-          name: profile.full_name,
+          name: profile.full_name || 'User',
           role: profile.role,
           hostelName: profile.hostel_name || 'N/A',
           roomNumber: profile.room_number,
@@ -149,35 +142,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           approvalStatus: profile.approval_status,
           rejectionReason: profile.rejection_reason,
         }
-        console.log('Setting user state:', userData)
+        
+        console.log('[loadUserProfile] Profile loaded, setting user state')
         setUser(userData)
       }
     } catch (error) {
-      console.error('Unexpected error in loadUserProfile:', error)
-      
-      // Check if it's a fetch/network error and retry
-      const isAbortError = error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))
-      const isFetchError = error instanceof Error && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))
-      
-      if ((isAbortError || isFetchError) && retryCount < 2) {
-        console.log(`Connection error detected (${error instanceof Error ? error.message : 'unknown'}), retrying (attempt ${retryCount + 2}/3)...`)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        return loadUserProfile(authUser, retryCount + 1)
-      }
-      
-      // Log final failure with helpful message
-      console.error('Failed to load user profile:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        type: error instanceof Error ? error.name : typeof error,
-        retries: retryCount,
-        suggestion: 'Check Supabase connection, RLS policies, and network connectivity'
-      })
+      console.error('[loadUserProfile] Unexpected error:', error)
+    } finally {
+      // Always clear the loading flag
+      isLoadingProfile = false
     }
   }
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
-      console.log('Login attempt:', { email, role })
+      console.log('[AuthContext] Login attempt:', { email, role })
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -186,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
       
-      console.log('Auth successful, user ID:', data.user.id)
+      console.log('[AuthContext] Credentials valid, user ID:', data.user.id)
 
       // Verify role and approval status
       const { data: profile, error: profileError } = await supabase
@@ -195,17 +174,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', data.user.id)
         .single()
 
-      console.log('Profile query result:', { profile, profileError })
+      console.log('[AuthContext] Profile validation:', { profile, profileError })
 
       if (profileError) {
-        console.error('Profile error details:', {
-          error: profileError,
-          message: profileError.message,
-          code: profileError.code,
-          details: profileError.details,
-          hint: profileError.hint,
-          stringified: JSON.stringify(profileError)
-        })
+        console.error('[AuthContext] Profile load failed:', profileError)
         await supabase.auth.signOut()
         throw new Error('Unable to load user profile. Please ensure the database tables are set up correctly.')
       }
@@ -215,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User profile not found. Please contact support.')
       }
 
-      console.log('Profile loaded successfully:', profile)
+      console.log('[AuthContext] Profile loaded, validating role match')
 
       if (profile.role !== role) {
         await supabase.auth.signOut()

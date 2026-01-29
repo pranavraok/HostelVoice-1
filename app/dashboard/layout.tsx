@@ -19,8 +19,32 @@ export default function DashboardLayout({
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
+  // ARCHITECTURAL PRINCIPLE: Dashboard requires THREE conditions:
+  // 1. Auth loading complete (!isLoading)
+  // 2. Supabase session exists (checked in auth context)
+  // 3. User profile loaded with role (user !== null AND user.role exists)
+  //
+  // Session existence alone is NOT sufficient - user must have completed
+  // the full login flow including role selection and profile creation.
+
+  // SAFETY NET: Prevent infinite loading with timeout
+  // If auth is still loading after 10 seconds, something is wrong - redirect to login
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.error('[DashboardLayout] Auth loading timeout - redirecting to login')
+        router.push('/login')
+      }
+    }, 10000) // 10 second safety timeout
+
+    return () => clearTimeout(timeoutId)
+  }, [isLoading, router])
+
+  // GUARD: Redirect to login if user is not fully initialized
+  // This enforces that credentials + role selection flow was completed
   useEffect(() => {
     if (!isLoading && !user) {
+      console.log('[DashboardLayout] No user found after loading - redirecting to login')
       router.push('/login')
     }
   }, [user, isLoading, router])

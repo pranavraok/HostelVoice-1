@@ -51,6 +51,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<UserRole>('student')
 
+  // ARCHITECTURAL PRINCIPLE: 
+  // Login page ALWAYS shows the login form and requires explicit role selection.
+  // We do NOT auto-redirect based on session existence because:
+  // 1. Session existence ≠ completed login flow
+  // 2. Role selection is MANDATORY for every login
+  // 3. User must explicitly confirm credentials + role match
+  // The dashboard guard handles unauthorized access prevention.
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
