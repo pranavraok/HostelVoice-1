@@ -293,10 +293,20 @@ export function CaretakerIssueManager() {
               {issues.map((issue, i) => {
                 const priorityColor = getPriorityColor(issue.priority)
                 const statusColor = getStatusColor(issue.status)
+                
+                // Get solid color for priority badge
+                const getPrioritySolidColor = (priority: IssueDetail['priority']) => {
+                  switch (priority) {
+                    case 'high': return '#ef4444'
+                    case 'medium': return '#f97316'
+                    default: return '#22c55e'
+                  }
+                }
+                
                 return (
                   <div
                     key={issue.id}
-                    className={`bg-white border-2 rounded-xl sm:rounded-2xl p-4 sm:p-6 cursor-pointer transition-all hover:shadow-xl animate-fade-in ${
+                    className={`bg-white border-2 rounded-xl sm:rounded-2xl p-4 sm:p-6 cursor-pointer transition-all hover:shadow-xl animate-fade-in relative overflow-visible ${
                       selectedIssue?.id === issue.id ? 'ring-2 sm:ring-4' : ''
                     }`}
                     style={{ 
@@ -306,8 +316,23 @@ export function CaretakerIssueManager() {
                     }}
                     onClick={() => handleIssueClick(issue)}
                   >
+                    {/* Priority Badge - Top Right Corner */}
+                    <span 
+                      className="absolute -top-3 -right-3 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-extrabold uppercase tracking-wider z-10 transform rotate-3"
+                      style={{ 
+                        background: getPrioritySolidColor(issue.priority),
+                        color: 'white',
+                        borderColor: 'white',
+                        borderWidth: '3px',
+                        borderStyle: 'solid',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      {issue.priority}
+                    </span>
+
                     <div className="flex items-start justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 pr-20">
                         <div 
                           className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
                           style={{ background: statusColor.bg }}
@@ -319,16 +344,6 @@ export function CaretakerIssueManager() {
                           <p className="text-[10px] sm:text-xs text-gray-500 font-medium mt-1">Issue ID: #{issue.id}</p>
                         </div>
                       </div>
-                      <span 
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold border-2 flex-shrink-0 ml-2"
-                        style={{ 
-                          background: priorityColor.bg, 
-                          color: priorityColor.text,
-                          borderColor: priorityColor.border
-                        }}
-                      >
-                        {issue.priority.toUpperCase()}
-                      </span>
                     </div>
 
                     <div className="flex flex-wrap gap-2">

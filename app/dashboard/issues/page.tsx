@@ -241,7 +241,7 @@ export default function IssuesPage() {
             {user.role === 'student' && (
               <Button
                 onClick={() => setShowForm(!showForm)}
-                className="text-white font-bold gap-2 h-11 sm:h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
+                className="text-white font-bold gap-2 w-full sm:flex-1 md:w-auto h-11 sm:h-12 md:h-14 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
                 style={{ background: '#014b89' }}
               >
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -402,14 +402,40 @@ export default function IssuesPage() {
               issues.map((issue, index) => {
                 const statusColor = getStatusColor(issue.status)
                 const priorityColor = getPriorityColor(issue.priority)
+                
+                // Get solid color for priority badge
+                const getPrioritySolidColor = (priority: string) => {
+                  switch (priority) {
+                    case 'urgent': return '#ef4444'
+                    case 'high': return '#f97316'
+                    case 'medium': return '#eab308'
+                    default: return '#22c55e'
+                  }
+                }
+                
                 return (
                   <div
                     key={issue.id}
-                    className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 hover:border-gray-300 hover:shadow-xl transition-all duration-300 animate-fade-in"
+                    className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 hover:border-gray-300 hover:shadow-xl transition-all duration-300 animate-fade-in relative overflow-visible"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
+                    {/* Priority Badge - Top Right Corner */}
+                    <span 
+                      className="absolute -top-3 -right-3 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-extrabold uppercase tracking-wider z-10 transform rotate-3"
+                      style={{ 
+                        background: getPrioritySolidColor(issue.priority),
+                        color: 'white',
+                        borderColor: 'white',
+                        borderWidth: '3px',
+                        borderStyle: 'solid',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      {issue.priority}
+                    </span>
+
                     <div className="flex items-start justify-between mb-3 sm:mb-4">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-20">
                         <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: statusColor.bg }}>
                             {getStatusIcon(issue.status)}
@@ -429,15 +455,9 @@ export default function IssuesPage() {
                           >
                             {formatStatus(issue.status)}
                           </span>
-                          <span 
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold border-2 capitalize"
-                            style={{ background: priorityColor.bg, color: priorityColor.text, borderColor: priorityColor.border }}
-                          >
-                            {issue.priority} Priority
-                          </span>
                           {issue.hostel_name && (
                             <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-gray-100 text-gray-700 text-xs sm:text-sm font-semibold border-2 border-gray-200">
-                              📍 {issue.hostel_name}
+                              {issue.hostel_name}
                             </span>
                           )}
                         </div>
@@ -763,7 +783,7 @@ export default function IssuesPage() {
               {/* Action Note */}
               <div className="bg-blue-50 border-2 border-blue-100 rounded-xl p-3 sm:p-4">
                 <p className="text-xs sm:text-sm text-blue-700 font-medium">
-                  💡 Track your issue status here. You'll be notified when it's updated by the caretaker.
+                  Track your issue status here. You'll be notified when it's updated by the caretaker.
                 </p>
               </div>
             </div>
