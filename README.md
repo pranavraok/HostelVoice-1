@@ -1,12 +1,16 @@
-# 🏠 HostelVoice - Smart Hostel Management System
+<div align="center">
+  <img src="./public/logo/logo.png" alt="HostelVoice Logo" width="200" />
+  
+  # 🏠 HostelVoice - Smart Hostel Management System
 
-A comprehensive full-stack hostel management solution with **Next.js 16** frontend, **Express.js** backend API, and **Supabase** database. Features secure role-based authentication, real-time issue tracking, announcements, lost & found management, and analytics dashboard.
+  <p>A comprehensive full-stack hostel management solution with <strong>Next.js 16</strong> frontend, <strong>Express.js</strong> backend API, and <strong>Supabase</strong> database. Features secure role-based authentication, real-time issue tracking, announcements, lost & found management, leave management, mess management, and analytics dashboard.</p>
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
-[![Express.js](https://img.shields.io/badge/Express.js-4.21-green)](https://expressjs.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-Database-green)](https://supabase.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38bdf8)](https://tailwindcss.com/)
+  [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+  [![Express.js](https://img.shields.io/badge/Express.js-4.21-green)](https://expressjs.com/)
+  [![Supabase](https://img.shields.io/badge/Supabase-Database-green)](https://supabase.com/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38bdf8)](https://tailwindcss.com/)
+</div>
 
 ---
 
@@ -22,7 +26,438 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 
 ---
 
-## 👥 What Each User Can Do
+## � How HostelVoice Works - Complete Flow
+
+### System Architecture Overview
+
+HostelVoice follows a **backend-first architecture** where all database operations are centralized through the Express.js API server. This ensures consistent business logic, proper authorization, and audit logging.
+
+```
+┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+│                 │         │                 │         │                 │
+│  Next.js 16     │────────▶│  Express.js     │────────▶│   Supabase      │
+│  Frontend       │  HTTP   │  Backend API    │  Admin  │   PostgreSQL    │
+│  (Port 3000)    │  REST   │  (Port 3001)    │  Client │   Database      │
+│                 │◀────────│                 │◀────────│                 │
+└─────────────────┘         └─────────────────┘         └─────────────────┘
+      │                            │                            │
+      │ Auth Only                  │ All Data Ops               │
+      │                            │ + Audit Logs               │
+      │                            │ + Notifications            │
+      └───────────────────────────▶│                            │
+          Supabase Auth            │                            │
+          (Login/Register)         │                            │
+                                   └────────────────────────────┘
+```
+
+### 🚦 User Journey Flow
+
+#### 1️⃣ **Registration & Approval Flow**
+
+```
+New User
+   │
+   ├─ Visits /register
+   │
+   ├─ Selects Role: Student / Caretaker / Admin
+   │
+   ├─ Fills Registration Form
+   │   ├─ Student: Name, Email, Phone, Hostel, Room, Student ID
+   │   ├─ Caretaker: Name, Email, Phone, Hostels Assigned
+   │   └─ Admin: Name, Email, Phone, Department
+   │
+   ├─ Supabase Auth creates account
+   │   └─ Password encrypted & stored securely
+   │
+   ├─ User record created in database
+   │   └─ approval_status = 'pending' (except Admin = 'approved')
+   │
+   ├─ Admin receives approval request
+   │   ├─ Reviews user details
+   │   ├─ Approves ✅ or Rejects ❌
+   │   └─ Audit log created
+   │
+   └─ User logs in
+       ├─ If approved → Access dashboard
+       └─ If pending/rejected → Show waiting message
+```
+
+#### 2️⃣ **Authentication & Authorization Flow**
+
+```
+User Login
+   │
+   ├─ Enters email & password at /login
+   │
+   ├─ Supabase Auth validates credentials
+   │   ├─ Success → Returns JWT access token
+   │   └─ Failure → Show error message
+   │
+   ├─ Frontend stores token in localStorage
+   │   └─ AuthContext provides user state globally
+   │
+   ├─ Middleware checks all /dashboard/* routes
+   │   ├─ No token → Redirect to /login
+   │   ├─ Token expired → Refresh token automatically
+   │   └─ Valid token → Allow access
+   │
+   ├─ Every API call includes JWT in Authorization header
+   │   └─ Backend authMiddleware verifies token
+   │       ├─ Decodes user info (id, email, role)
+   │       ├─ Attaches req.user to request
+   │       └─ Rejects if invalid/expired
+   │
+   └─ Role-based access control
+       ├─ Frontend: Conditionally renders UI
+       ├─ Backend: Filters data by role
+       └─ Database: RLS policies as backup
+```
+
+#### 3️⃣ **Issue Management Flow**
+
+```
+Student Reports Issue
+   │
+   ├─ Navigates to /dashboard/issues
+   │
+   ├─ Clicks "Report New Issue"
+   │
+   ├─ Fills Form
+   │   ├─ Title: "AC not working in Room 301"
+   │   ├─ Description: Detailed explanation
+   │   ├─ Category: Maintenance
+   │   ├─ Priority: High
+   │   └─ Location: Block B, Room 301
+   │
+   ├─ Frontend calls POST /api/issues
+   │   └─ JWT token included automatically
+   │
+   ├─ Backend Controller
+   │   ├─ Validates request with Zod schema
+   │   ├─ Creates issue in database
+   │   ├─ Sets status = 'open'
+   │   ├─ Sets reported_by = user.id
+   │   ├─ Logs to audit_logs table
+   │   └─ Notifies caretaker
+   │
+   ├─ Caretaker sees issue
+   │   ├─ Views in /dashboard/issues
+   │   ├─ Filtered by their hostel automatically
+   │   ├─ Assigns to staff member
+   │   └─ Updates status to 'in_progress'
+   │
+   ├─ Staff member works on issue
+   │   └─ Updates progress via backend API
+   │
+   ├─ Issue resolved
+   │   ├─ Caretaker marks as 'resolved'
+   │   ├─ Student receives notification
+   │   ├─ resolved_at timestamp set
+   │   └─ Audit log created
+   │
+   └─ Student views history
+       └─ All status changes tracked with timestamps
+```
+
+#### 4️⃣ **Leave Application Flow**
+
+**Student Leave:**
+```
+Student → Apply Leave
+   │
+   ├─ Fills leave form (/dashboard/student-leave)
+   │   ├─ Start Date & End Date
+   │   ├─ Destination Address
+   │   ├─ Reason for leave
+   │   └─ Contact during leave
+   │
+   ├─ Submits to backend API
+   │   └─ POST /api/leave/student
+   │
+   ├─ Caretaker reviews (/dashboard/caretaker-leave)
+   │   ├─ Sees all pending requests for their hostel
+   │   ├─ Can approve, reject, or request more info
+   │   └─ Adds comments/feedback
+   │
+   ├─ Student gets notification
+   │   └─ Checks status at /dashboard/leave-status
+   │
+   └─ Status updated
+       ├─ Approved → Student can leave
+       ├─ Rejected → Show reason
+       └─ Info Needed → Student provides additional details
+```
+
+**Caretaker Leave:**
+```
+Caretaker → Apply Leave
+   │
+   ├─ Fills leave form (/dashboard/caretaker-leave)
+   │   ├─ Leave dates
+   │   ├─ Reason (casual/sick/emergency)
+   │   ├─ Suggests replacement caretaker
+   │   └─ Uploads documents (if sick leave)
+   │
+   ├─ Admin reviews (/dashboard/admin-leave-management)
+   │   ├─ Checks leave calendar for conflicts
+   │   ├─ Assigns replacement caretaker
+   │   ├─ Approves or conditionally approves
+   │   └─ Ensures no hostel left unattended
+   │
+   ├─ Caretaker gets notification
+   │   └─ Checks at /dashboard/caretaker-leave-status
+   │
+   └─ System tracks
+       ├─ Who is on leave when
+       ├─ Replacement assignments
+       └─ Leave balance remaining
+```
+
+#### 5️⃣ **Mess Management Flow**
+
+```
+Caretaker → Upload Menu
+   │
+   ├─ Navigates to /dashboard/mess-management
+   │
+   ├─ Uploads menu card image (PNG/JPG)
+   │   └─ Stored in Supabase Storage
+   │
+   ├─ Fills weekly menu calendar
+   │   ├─ Monday: Breakfast, Lunch, Snacks, Dinner
+   │   ├─ Tuesday: ... (all 7 days)
+   │   └─ Items: "Idli, Sambar, Chutney, Tea"
+   │
+   ├─ System validates all fields filled
+   │
+   ├─ Menu saved to database
+   │   └─ POST /api/mess/upload-menu
+   │
+   └─ Students can view
+       └─ At /dashboard/mess
+
+Student → Give Feedback
+   │
+   ├─ Views current menu
+   │
+   ├─ After eating, submits feedback
+   │   ├─ Rating (1-5 stars)
+   │   ├─ Comments/suggestions
+   │   └─ Meal type (breakfast/lunch/dinner)
+   │
+   ├─ Feedback stored in database
+   │   └─ POST /api/mess/feedback
+   │
+   ├─ Caretaker sees all feedback
+   │   └─ At /dashboard/mess-management
+   │
+   ├─ Caretaker responds
+   │   └─ Marks as reviewed with response
+   │
+   └─ Admin monitors
+       └─ Mess analytics across all hostels
+```
+
+#### 6️⃣ **Lost & Found Flow**
+
+```
+Student Loses Item
+   │
+   ├─ Reports at /dashboard/lost-found
+   │
+   ├─ Fills form
+   │   ├─ Item: "Blue JBL Headphones"
+   │   ├─ Category: Electronics
+   │   ├─ Date & time lost: ISO format
+   │   ├─ Location: "Near basketball court"
+   │   ├─ Contact: Phone number
+   │   └─ Additional notes
+   │
+   ├─ System checks for matches
+   │   └─ Smart matching algorithm
+   │       ├─ Same category
+   │       ├─ Similar description
+   │       ├─ Nearby location
+   │       └─ Recent timeframe
+   │
+   ├─ Notifies if match found
+   │
+   └─ All students can see
+       └─ Public visibility for better recovery
+
+Someone Finds Item
+   │
+   ├─ Reports as "Found"
+   │
+   ├─ Fills form
+   │   ├─ Item found: "Blue headphones"
+   │   ├─ Date & location found
+   │   ├─ Current location: "Security office"
+   │   └─ Contact info
+   │
+   ├─ System notifies potential owners
+   │   └─ Matches with lost reports
+   │
+   ├─ Owner contacts finder
+   │   └─ Verifies ownership
+   │
+   ├─ Item marked as "claimed"
+   │   └─ PUT /api/lost-found/:id/claim
+   │
+   └─ Success! Item returned to owner
+```
+
+#### 7️⃣ **Announcement Flow**
+
+```
+Caretaker/Admin → Post Announcement
+   │
+   ├─ Creates announcement (/dashboard/announcements-manage)
+   │
+   ├─ Fills form
+   │   ├─ Title: "Water supply maintenance"
+   │   ├─ Content: Full details
+   │   ├─ Target: Students / Staff / All
+   │   └─ Pin important: Yes/No
+   │
+   ├─ Backend validates & stores
+   │   └─ POST /api/announcements
+   │
+   ├─ Users see announcement
+   │   ├─ Pinned items show first
+   │   ├─ Filtered by target_audience
+   │   └─ Displayed on dashboard
+   │
+   └─ Notification sent
+       └─ All target users notified
+```
+
+#### 8️⃣ **Analytics & Reporting Flow**
+
+```
+Admin → View Analytics
+   │
+   ├─ Navigates to /dashboard/analytics
+   │
+   ├─ Backend aggregates data
+   │   └─ GET /api/analytics/admin
+   │       ├─ Counts: Total users, issues, announcements
+   │       ├─ Status breakdown: Open vs resolved
+   │       ├─ Trends: Issues over time
+   │       └─ Hostel-wise statistics
+   │
+   ├─ Frontend renders charts
+   │   ├─ Recharts library
+   │   ├─ Bar charts, line graphs
+   │   └─ Pie charts for distribution
+   │
+   └─ Real-time updates
+       └─ Data refreshes automatically
+```
+
+### 🔐 Security Flow
+
+```
+Every Request
+   │
+   ├─ Frontend sends request with JWT token
+   │   └─ Authorization: Bearer <token>
+   │
+   ├─ Backend authMiddleware
+   │   ├─ Extracts token from header
+   │   ├─ Verifies with Supabase
+   │   ├─ Decodes user info
+   │   └─ Attaches to req.user
+   │
+   ├─ Role-based filtering in controllers
+   │   ├─ Student: Own data only
+   │   ├─ Caretaker: Their hostel only
+   │   └─ Admin: All data
+   │
+   ├─ Database queries filtered by role
+   │   └─ No cross-hostel data leakage
+   │
+   ├─ Audit log created
+   │   ├─ Who did what
+   │   ├─ When and from where (IP)
+   │   ├─ Before/after state
+   │   └─ Stored in audit_logs table
+   │
+   └─ Response sent
+       └─ Only authorized data returned
+```
+
+### 📊 Data Flow Pattern
+
+**Example: Getting Issues**
+
+```typescript
+1. User clicks "View Issues" button
+   ↓
+2. Frontend (React Component)
+   const { data } = await issuesApi.getAll(filters)
+   ↓
+3. API Client (lib/api.ts)
+   - Adds JWT token to headers
+   - Makes request: GET /api/issues?status=open
+   ↓
+4. Express Backend (controllers/issues.controller.ts)
+   - authMiddleware verifies token
+   - Extract user info from req.user
+   - Check user role
+   ↓
+5. Role-Based Filtering
+   if (role === 'student') {
+     // Only issues reported by this student
+     query = query.eq('reported_by', userId)
+   } else if (role === 'caretaker') {
+     // Issues from their assigned hostels
+     query = query.in('hostel_name', userHostels)
+   } else if (role === 'admin') {
+     // All issues, no filter
+   }
+   ↓
+6. Supabase Query (with Admin Client)
+   - Backend uses service role key
+   - Bypasses RLS policies
+   - Applies programmatic filters
+   ↓
+7. Response
+   - Returns filtered data
+   - Frontend renders in table
+   - User sees only their authorized data
+```
+
+### 🔄 State Management Flow
+
+```
+Application State
+   │
+   ├─ Authentication State (AuthContext)
+   │   ├─ User object (id, email, role, hostel)
+   │   ├─ JWT token
+   │   ├─ Loading states
+   │   └─ Login/logout functions
+   │
+   ├─ Component Local State (useState)
+   │   ├─ Form inputs
+   │   ├─ Loading indicators
+   │   └─ Error messages
+   │
+   ├─ Server State (API calls)
+   │   ├─ Fetched on component mount
+   │   ├─ Cached in component state
+   │   └─ Refreshed on mutations
+   │
+   └─ Notifications (Toast)
+       ├─ Success messages
+       ├─ Error alerts
+       └─ Info notifications
+```
+
+---
+
+## �👥 What Each User Can Do
 
 ### 🎓 Students Can:
 
@@ -690,15 +1125,15 @@ pnpm start
 
 ---
 
-## 🛠️ Development
+## 🛠️ Development Guide
 
-### Available Scripts
+### Quick Start Commands
 
 **Frontend:**
 
 ```bash
 npm run dev       # Start Next.js development server (localhost:3000)
-npm run build     # Build for production
+npm run build     # Build for production  
 npm run start     # Start production server
 npm run lint      # Run ESLint
 ```
@@ -710,82 +1145,813 @@ cd backend
 npm run dev       # Start Express.js with hot reload (localhost:3001)
 npm run build     # Compile TypeScript to JavaScript
 npm start         # Start production server
+npm run typecheck # Type-check without emitting files
+npm run lint      # Run ESLint on backend code
 ```
+
+### Complete Development Setup
+
+#### 1. Initial Setup
+
+```bash
+# Clone repository
+git clone <your-repo-url>
+cd HostelVoice
+
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd backend
+npm install
+cd ..
+
+# Setup environment variables
+cp .env.example .env.local
+cd backend
+cp .env.example .env
+cd ..
+```
+
+#### 2. Configure Environment Files
+
+**Frontend (`.env.local`):**
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+**Backend (`backend/.env`):**
+```bash
+PORT=3001
+NODE_ENV=development
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key
+JWT_SECRET=your-super-secret-jwt-key
+FRONTEND_URL=http://localhost:3000
+```
+
+#### 3. Setup Database
+
+1. Create Supabase project at [supabase.com](https://supabase.com)
+2. Open SQL Editor
+3. Run `supabase-schema.sql` (main schema)
+4. Run `approval-system-schema.sql` (user approvals)
+5. Run `leave-system-schema.sql` (leave management)
+6. Run `mess-system-schema.sql` (mess management)
+
+#### 4. Start Development Servers
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+npm run dev
+```
+✅ Backend running at `http://localhost:3001`
+
+**Terminal 2 - Frontend:**
+```bash
+npm run dev
+```
+✅ Frontend running at `http://localhost:3000`
+
+**Both must be running!** Frontend calls backend API for all data operations.
 
 ### Development Workflow
 
-1. **Start Backend First:**
+#### Daily Development Routine
 
-   ```bash
-   cd backend
-   npm run dev
-   ```
+```bash
+# Morning - Start servers
+Terminal 1: cd backend && npm run dev
+Terminal 2: npm run dev
 
-   Backend runs on `http://localhost:3001`
+# During development
+- Make changes to files
+- Both servers auto-reload
+- Test changes in browser
+- Check terminal for errors
 
-2. **Start Frontend (new terminal):**
+# Afternoon - Check logs
+Terminal 1: Backend API logs
+Terminal 2: Next.js build logs
+Browser: DevTools Console & Network tab
 
-   ```bash
-   npm run dev
-   ```
+# End of day - Commit changes
+git add .
+git commit -m "feat: add new feature"
+git push
+```
 
-   Frontend runs on `http://localhost:3000`
+#### Hot Reload Behavior
 
-3. **Both servers must be running for the app to work**
+**Frontend (Next.js):**
+- ✅ React components - instant refresh
+- ✅ CSS/Tailwind - instant update
+- ✅ TypeScript - recompiles automatically
+- ❌ `.env.local` changes - requires restart
 
-### API Development
+**Backend (Express.js with tsx watch):**
+- ✅ Controllers - auto-restart
+- ✅ Routes - auto-restart  
+- ✅ Services - auto-restart
+- ❌ `backend/.env` changes - requires restart
 
-**Adding a New API Endpoint:**
+### Adding New Features - Complete Guide
 
-1. Create controller in `backend/src/controllers/`
-2. Add route in `backend/src/routes/`
-3. Add validation schema in `backend/src/utils/validators.ts`
-4. Add API function in `lib/api.ts` (frontend)
-5. Add TypeScript interface in `lib/api.ts`
+#### Example: Adding a "Feedback" Feature
 
-**Example:**
+**Step 1: Plan the Feature**
+```
+Feature: Student Feedback System
+- Students can submit feedback about hostel
+- Caretakers can view and respond
+- Categories: cleanliness, food, facilities, staff
+- Ratings: 1-5 stars
+```
 
+**Step 2: Create Database Table**
+```sql
+-- backend/feedback-schema.sql
+CREATE TABLE feedback (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hostel_name TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('cleanliness', 'food', 'facilities', 'staff')),
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT NOT NULL,
+  response TEXT,
+  responded_by UUID REFERENCES users(id),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'responded', 'closed')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_feedback_student ON feedback(student_id);
+CREATE INDEX idx_feedback_hostel ON feedback(hostel_name);
+CREATE INDEX idx_feedback_status ON feedback(status);
+
+-- Enable RLS
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users view own feedback"
+  ON feedback FOR SELECT
+  USING (auth.uid() = student_id OR 
+         EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('caretaker', 'admin')));
+```
+
+**Step 3: Create TypeScript Interfaces**
 ```typescript
-// backend/src/controllers/example.controller.ts
-export class ExampleController {
-  static async getData(req: Request, res: Response) {
-    const user = req.user!; // From auth middleware
-    const data = validate(exampleSchema, req.body);
-    // ... implement logic
-    sendSuccess(res, "Success", result);
-  }
+// backend/src/types/index.ts
+export interface Feedback {
+  id: string;
+  student_id: string;
+  hostel_name: string;
+  category: 'cleanliness' | 'food' | 'facilities' | 'staff';
+  rating: number;
+  comment: string;
+  response?: string;
+  responded_by?: string;
+  status: 'pending' | 'responded' | 'closed';
+  created_at: string;
+  updated_at: string;
 }
 
-// lib/api.ts (frontend)
-export const exampleApi = {
-  getData: (params: ExampleParams) =>
-    apiGet<ExampleResponse>("/api/example", params),
+export interface CreateFeedbackDto {
+  category: string;
+  rating: number;
+  comment: string;
+}
+
+export interface RespondFeedbackDto {
+  response: string;
+}
+```
+
+**Step 4: Create Validation Schemas**
+```typescript
+// backend/src/utils/validators.ts
+import { z } from 'zod';
+
+export const createFeedbackSchema = z.object({
+  category: z.enum(['cleanliness', 'food', 'facilities', 'staff']),
+  rating: z.number().min(1).max(5),
+  comment: z.string().min(10).max(1000)
+});
+
+export const respondFeedbackSchema = z.object({
+  response: z.string().min(5).max(500)
+});
+```
+
+**Step 5: Create Backend Controller**
+```typescript
+// backend/src/controllers/feedback.controller.ts
+import { Request, Response } from 'express';
+import { supabaseAdmin } from '../config/supabaseClient';
+import { sendSuccess, sendError } from '../utils/response';
+import { createFeedbackSchema, respondFeedbackSchema } from '../utils/validators';
+import { auditService } from '../services/audit.service';
+
+export class FeedbackController {
+  // Get all feedback (role-based filtering)
+  static async getAll(req: Request, res: Response) {
+    try {
+      const user = req.user!;
+      const { status, category } = req.query;
+      
+      let query = supabaseAdmin
+        .from('feedback')
+        .select('*, users!feedback_student_id_fkey(full_name, email)');
+      
+      // Role-based filtering
+      if (user.role === 'student') {
+        query = query.eq('student_id', user.id);
+      } else if (user.role === 'caretaker') {
+        // Caretaker sees feedback from their hostels
+        const assignedHostels = user.assigned_hostels || [];
+        query = query.in('hostel_name', assignedHostels);
+      }
+      // Admin sees all
+      
+      // Apply filters
+      if (status) query = query.eq('status', status);
+      if (category) query = query.eq('category', category);
+      
+      query = query.order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      sendSuccess(res, 'Feedback fetched successfully', data);
+    } catch (error: any) {
+      console.error('Error fetching feedback:', error);
+      sendError(res, error.message || 'Failed to fetch feedback', 500);
+    }
+  }
+
+  // Create feedback (students only)
+  static async create(req: Request, res: Response) {
+    try {
+      const user = req.user!;
+      
+      // Validate request body
+      const validated = createFeedbackSchema.parse(req.body);
+      
+      const { data, error } = await supabaseAdmin
+        .from('feedback')
+        .insert({
+          student_id: user.id,
+          hostel_name: user.hostel_name,
+          category: validated.category,
+          rating: validated.rating,
+          comment: validated.comment,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Log to audit
+      await auditService.log({
+        user_id: user.id,
+        action: 'CREATE_FEEDBACK',
+        entity_type: 'feedback',
+        entity_id: data.id,
+        new_data: data
+      });
+      
+      sendSuccess(res, 'Feedback submitted successfully', data, 201);
+    } catch (error: any) {
+      console.error('Error creating feedback:', error);
+      sendError(res, error.message || 'Failed to create feedback', 400);
+    }
+  }
+
+  // Respond to feedback (caretaker/admin)
+  static async respond(req: Request, res: Response) {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Check if user is caretaker or admin
+      if (!['caretaker', 'admin'].includes(user.role)) {
+        return sendError(res, 'Only caretakers and admins can respond', 403);
+      }
+      
+      const validated = respondFeedbackSchema.parse(req.body);
+      
+      // Get original feedback
+      const { data: original } = await supabaseAdmin
+        .from('feedback')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      const { data, error } = await supabaseAdmin
+        .from('feedback')
+        .update({
+          response: validated.response,
+          responded_by: user.id,
+          status: 'responded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Log to audit
+      await auditService.log({
+        user_id: user.id,
+        action: 'RESPOND_FEEDBACK',
+        entity_type: 'feedback',
+        entity_id: id,
+        old_data: original,
+        new_data: data
+      });
+      
+      sendSuccess(res, 'Response added successfully', data);
+    } catch (error: any) {
+      console.error('Error responding to feedback:', error);
+      sendError(res, error.message || 'Failed to respond', 400);
+    }
+  }
+}
+```
+
+**Step 6: Create Backend Routes**
+```typescript
+// backend/src/routes/feedback.routes.ts
+import { Router } from 'express';
+import { FeedbackController } from '../controllers/feedback.controller';
+import { authMiddleware } from '../middleware/authMiddleware';
+
+const router = Router();
+
+// All routes require authentication
+router.get('/', authMiddleware, FeedbackController.getAll);
+router.post('/', authMiddleware, FeedbackController.create);
+router.put('/:id/respond', authMiddleware, FeedbackController.respond);
+
+export default router;
+```
+
+**Step 7: Register Routes in App**
+```typescript
+// backend/src/app.ts
+import feedbackRoutes from './routes/feedback.routes';
+
+// ... other imports
+
+app.use('/api/feedback', feedbackRoutes);
+```
+
+**Step 8: Create Frontend API Client**
+```typescript
+// lib/api.ts
+
+// Add interface
+export interface Feedback {
+  id: string;
+  student_id: string;
+  hostel_name: string;
+  category: 'cleanliness' | 'food' | 'facilities' | 'staff';
+  rating: number;
+  comment: string;
+  response?: string;
+  responded_by?: string;
+  status: 'pending' | 'responded' | 'closed';
+  created_at: string;
+  updated_at: string;
+  users?: {
+    full_name: string;
+    email: string;
+  };
+}
+
+// Add API functions
+export const feedbackApi = {
+  getAll: (filters?: { status?: string; category?: string }) =>
+    apiGet<Feedback[]>('/api/feedback', filters),
+    
+  create: (data: { category: string; rating: number; comment: string }) =>
+    apiPost<Feedback>('/api/feedback', data),
+    
+  respond: (id: string, response: string) =>
+    apiPut<Feedback>(`/api/feedback/${id}/respond`, { response })
 };
+```
+
+**Step 9: Create React Component**
+```typescript
+// app/dashboard/feedback/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import { feedbackApi, Feedback } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Star } from 'lucide-react';
+
+export default function FeedbackPage() {
+  const { user } = useAuth();
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  
+  // Form state
+  const [category, setCategory] = useState('cleanliness');
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    loadFeedback();
+  }, []);
+
+  const loadFeedback = async () => {
+    try {
+      setLoading(true);
+      const data = await feedbackApi.getAll();
+      setFeedback(data);
+    } catch (error) {
+      toast.error('Failed to load feedback');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!comment.trim()) {
+      toast.error('Please enter your feedback');
+      return;
+    }
+    
+    try {
+      await feedbackApi.create({ category, rating, comment });
+      toast.success('Feedback submitted successfully!');
+      setComment('');
+      setShowForm(false);
+      loadFeedback();
+    } catch (error) {
+      toast.error('Failed to submit feedback');
+    }
+  };
+
+  const handleRespond = async (id: string, response: string) => {
+    try {
+      await feedbackApi.respond(id, response);
+      toast.success('Response added successfully!');
+      loadFeedback();
+    } catch (error) {
+      toast.error('Failed to add response');
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8">Loading feedback...</div>;
+  }
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Feedback</h1>
+        {user?.role === 'student' && (
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : 'Submit Feedback'}
+          </Button>
+        )}
+      </div>
+
+      {/* Feedback Form (Students only) */}
+      {showForm && user?.role === 'student' && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Submit Your Feedback</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block mb-2">Category</label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cleanliness">Cleanliness</SelectItem>
+                    <SelectItem value="food">Food</SelectItem>
+                    <SelectItem value="facilities">Facilities</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block mb-2">Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-8 h-8 cursor-pointer ${
+                        star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                      }`}
+                      onClick={() => setRating(star)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-2">Your Feedback</label>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Share your thoughts..."
+                  rows={5}
+                />
+              </div>
+
+              <Button type="submit">Submit Feedback</Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feedback List */}
+      <div className="space-y-4">
+        {feedback.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-gray-500">
+              No feedback submitted yet
+            </CardContent>
+          </Card>
+        ) : (
+          feedback.map((item) => (
+            <Card key={item.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="capitalize">{item.category}</CardTitle>
+                    {user?.role !== 'student' && item.users && (
+                      <p className="text-sm text-gray-500">
+                        By: {item.users.full_name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex">
+                    {Array.from({ length: item.rating }).map((_, i) => (
+                      <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4">{item.comment}</p>
+                
+                {item.response && (
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="font-semibold mb-2">Response:</p>
+                    <p>{item.response}</p>
+                  </div>
+                )}
+
+                {/* Response form for caretakers */}
+                {!item.response && ['caretaker', 'admin'].includes(user?.role || '') && (
+                  <div className="mt-4">
+                    <Textarea
+                      placeholder="Type your response..."
+                      id={`response-${item.id}`}
+                    />
+                    <Button
+                      className="mt-2"
+                      onClick={() => {
+                        const textarea = document.getElementById(`response-${item.id}`) as HTMLTextAreaElement;
+                        handleRespond(item.id, textarea.value);
+                      }}
+                    >
+                      Send Response
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+**Step 10: Add Navigation Link**
+```typescript
+// app/dashboard/layout.tsx or wherever your navigation is
+<Link href="/dashboard/feedback">
+  <MessageSquare className="mr-2 h-4 w-4" />
+  Feedback
+</Link>
+```
+
+**Step 11: Test the Feature**
+
+```bash
+# 1. Run SQL schema in Supabase SQL Editor
+
+# 2. Restart backend server (Ctrl+C then npm run dev)
+
+# 3. Test in browser:
+#    - Login as student
+#    - Go to /dashboard/feedback
+#    - Submit feedback
+#    - Login as caretaker
+#    - View and respond to feedback
+
+# 4. Check backend logs for any errors
+
+# 5. Verify in Supabase dashboard:
+#    - Database → feedback table
+#    - Check data is being saved correctly
+```
+
+### Debugging Guide
+
+#### Backend Debugging
+
+**Enable Detailed Logging:**
+```typescript
+// backend/src/controllers/yourController.ts
+console.log('🔍 Request:', {
+  user: req.user,
+  params: req.params,
+  query: req.query,
+  body: req.body
+});
+
+const { data, error } = await query;
+console.log('✅ Success:', data);
+console.log('❌ Error:', error);
+```
+
+**Check Backend Logs:**
+```bash
+# Terminal 1 shows:
+POST /api/feedback 201 123.456 ms  # Success
+POST /api/feedback 400 45.123 ms   # Validation error
+POST /api/feedback 500 89.012 ms   # Server error
+```
+
+**Test API with curl:**
+```bash
+# Login to get token
+TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"student@test.com","password":"password123"}' \
+  | jq -r '.token')
+
+# Test endpoint
+curl -X GET http://localhost:3001/api/feedback \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Frontend Debugging
+
+**Browser DevTools:**
+```javascript
+// 1. Open DevTools (F12)
+// 2. Go to Network tab
+// 3. Filter by "Fetch/XHR"
+// 4. Click request to see:
+Request URL: http://localhost:3001/api/feedback
+Request Headers: Authorization: Bearer <token>
+Request Payload: { category: "food", rating: 5, ... }
+Response Status: 200 OK
+Response Body: [{ id: "...", ... }]
+```
+
+**Console Logging:**
+```typescript
+// Add to component
+useEffect(() => {
+  console.log('Component mounted');
+  console.log('User:', user);
+  loadFeedback();
+}, []);
+
+const loadFeedback = async () => {
+  console.log('🔄 Loading feedback...');
+  try {
+    const data = await feedbackApi.getAll();
+    console.log('✅ Loaded:', data);
+    setFeedback(data);
+  } catch (error) {
+    console.error('❌ Error:', error);
+  }
+};
+```
+
+#### Common Issues & Solutions
+
+**Issue: 401 Unauthorized**
+```bash
+Problem: Backend returns "Invalid or expired token"
+Solution:
+1. Check localStorage has jwt_token
+2. Clear localStorage and login again
+3. Verify JWT_SECRET matches in both .env files
+4. Restart both servers after env changes
+```
+
+**Issue: 403 Forbidden / Permission Denied**
+```bash
+Problem: "Access denied" or empty data
+Solution:
+1. Check user role: console.log(req.user.role)
+2. Verify role-based filtering logic in controller
+3. Check RLS policies in Supabase
+4. Backend should use service role key (bypasses RLS)
+```
+
+**Issue: Data not showing**
+```bash
+Problem: API returns empty array []
+Solution:
+1. Check database has data: SELECT * FROM feedback;
+2. Verify role-based filtering isn't too restrictive
+3. Check user.hostel_name matches data
+4. Add console.log in backend controller
+```
+
+**Issue: Type errors**
+```bash
+Problem: TypeScript compilation errors
+Solution:
+1. Ensure interfaces match between frontend/backend
+2. Run: npm run typecheck
+3. Check import statements
+4. Verify @types packages are installed
 ```
 
 ### Database Development
 
+**Accessing Supabase:**
 ```bash
-# Access Supabase Dashboard at app.supabase.com
-# SQL Editor: Run custom queries and migrations
-# Table Editor: View/edit data directly
-# Authentication: Manage users and sessions
-# Database: Monitor performance and connections
+# 1. Go to https://supabase.com/dashboard
+# 2. Select your project
+# 3. Navigate to different sections:
 ```
 
-### Debugging
+**SQL Editor - Run Queries:**
+```sql
+-- View all feedback
+SELECT * FROM feedback ORDER BY created_at DESC LIMIT 10;
 
-**Backend Logs:**
+-- Get statistics
+SELECT 
+  category,
+  AVG(rating) as avg_rating,
+  COUNT(*) as total_count
+FROM feedback
+GROUP BY category;
 
-- All API requests logged to console
-- Error stack traces shown in development
-- Audit logs written to database
+-- Find unanswered feedback
+SELECT * FROM feedback
+WHERE response IS NULL
+AND status = 'pending';
+```
 
-**Frontend Logs:**
+**Table Editor - View/Edit Data:**
+- Click on table name
+- See all rows in spreadsheet format
+- Edit cells directly (be careful!)
+- Add/delete rows manually
 
-- Network requests visible in browser DevTools
-- React components use `console.log` for debugging
-- Toast notifications for user feedback
+**Database - Monitor Performance:**
+```sql
+-- Check table sizes
+SELECT 
+  schemaname,
+  tablename,
+  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- Check slow queries (if enabled)
+SELECT * FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
+```
 
 ---
 
@@ -908,6 +2074,148 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
+## � Project Status & Summary
+
+### ✅ What's Working Now (January 2026)
+
+**Architecture:**
+- ✅ Full-stack application with separate frontend and backend
+- ✅ Next.js 16 frontend with App Router
+- ✅ Express.js backend API with TypeScript
+- ✅ Supabase PostgreSQL database with RLS
+- ✅ JWT-based authentication with auto-refresh
+- ✅ Role-based access control (Student, Caretaker, Admin)
+
+**Core Features Implemented:**
+- ✅ User authentication (register, login, logout)
+- ✅ User approval system (admin approval required)
+- ✅ Issue/complaint tracking with assignment
+- ✅ Announcements with targeting and pinning
+- ✅ Lost & Found item management
+- ✅ Leave application system (student & caretaker)
+- ✅ Mess management (menu upload & feedback)
+- ✅ Role-specific dashboards
+- ✅ Analytics and reporting
+- ✅ Resident information management
+- ✅ Audit logging for all critical actions
+- ✅ Notification system
+
+**Technical Implementation:**
+- ✅ Backend-first architecture (all DB ops through API)
+- ✅ Type-safe API client with automatic JWT injection
+- ✅ Centralized error handling
+- ✅ Request validation with Zod schemas
+- ✅ Hot reload in development
+- ✅ Production-ready build scripts
+- ✅ Comprehensive documentation
+
+### 🎯 How Data Flows
+
+```
+User Action → React Component → API Client (lib/api.ts)
+    ↓
+JWT Token Auto-Attached → HTTP Request → Express Backend
+    ↓
+Auth Middleware Verifies → Controller Handles Logic
+    ↓
+Role-Based Filtering Applied → Supabase Query (Admin Client)
+    ↓
+Data Returned → Audit Log Created → Response Sent
+    ↓
+Frontend Receives Data → Component Updates → UI Renders
+```
+
+### 🔐 Security Implementation
+
+- **Frontend:** Supabase auth for login/register only
+- **Backend:** Service role key for all database operations
+- **Authorization:** Controllers implement role-based filtering
+- **Audit:** All actions logged with user, timestamp, IP
+- **Validation:** Zod schemas validate all requests
+- **Protection:** Middleware guards all protected routes
+
+### 📊 Current Statistics
+
+**Code Metrics:**
+- Frontend Pages: 20+ dashboard pages
+- Backend API Endpoints: 50+ routes
+- UI Components: 60+ Shadcn components
+- Database Tables: 12+ tables with relationships
+- Lines of Code: ~15,000+ lines
+
+**Features by Role:**
+
+**Students Can:**
+1. ✅ Report and track issues
+2. ✅ View announcements
+3. ✅ Use lost & found system
+4. ✅ Apply for leave
+5. ✅ Check leave status
+6. ✅ View mess menu
+7. ✅ Submit mess feedback
+8. ✅ View personal dashboard
+
+**Caretakers Can:**
+1. ✅ Manage student issues
+2. ✅ Post announcements
+3. ✅ Manage lost & found
+4. ✅ Review student leaves
+5. ✅ Apply for own leave
+6. ✅ Upload mess menus
+7. ✅ View mess feedback
+8. ✅ View students in their hostel
+
+**Admins Can:**
+1. ✅ Approve new users
+2. ✅ View all system data
+3. ✅ Access analytics dashboard
+4. ✅ Review caretaker leaves
+5. ✅ Assign replacement caretakers
+6. ✅ Monitor mess operations
+7. ✅ Access audit logs
+8. ✅ Manage all hostels
+
+### 🚀 Quick Start Checklist
+
+- [ ] Clone repository
+- [ ] Install dependencies (frontend & backend)
+- [ ] Create Supabase project
+- [ ] Run database schema scripts
+- [ ] Configure environment variables
+- [ ] Start backend server (port 3001)
+- [ ] Start frontend server (port 3000)
+- [ ] Register admin account
+- [ ] Test the application
+- [ ] Read complete documentation
+
+### 📚 Documentation Files
+
+| File | Purpose |
+|------|---------|
+| `README.md` | This file - complete project overview |
+| `SUPABASE_SETUP.md` | Detailed database setup guide |
+| `AUTH_README.md` | Authentication system documentation |
+| `PROJECT_STRUCTURE.md` | Code organization and architecture |
+| `backend/README.md` | Backend API documentation |
+| `backend/POSTMAN_TESTING_GUIDE.md` | API testing instructions |
+| `leave-application.md` | Leave management system docs |
+| `mess-feature.md` | Mess management system docs |
+| `*-schema.sql` | Database schema files |
+
+### 🔄 Development Status
+
+**Current Focus:** Maintaining and enhancing existing features
+
+**Recent Updates:**
+- ✅ Leave management system (Jan 2026)
+- ✅ Mess management with feedback (Jan 2026)
+- ✅ Enhanced lost & found with datetime (Jan 2026)
+- ✅ Comprehensive documentation (Jan 2026)
+
+**Known Issues:** None critical - see GitHub Issues for enhancements
+
+---
+
 ## 🗺️ Roadmap
 
 ### Current Version (v1.0) ✅
@@ -930,6 +2238,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ✅ User approval system for new registrations
 - ✅ Audit logging for all critical actions
 - ✅ Type-safe API with TypeScript across stack
+- ✅ Leave application system (student & caretaker)
+- ✅ Mess management with menu upload and feedback
 
 ### Upcoming Features
 
