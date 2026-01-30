@@ -147,7 +147,7 @@ function getDayName(date: string): string {
  */
 export async function getCurrentWeeklyMenu(hostelName: string | null): Promise<WeeklyMenuWithMeals | null> {
   const supabase = createClient()
-  const weekStart = getWeekStart()
+  const today = new Date().toISOString().split('T')[0]
   
   let query = supabase
     .from('mess_weekly_menus')
@@ -157,13 +157,18 @@ export async function getCurrentWeeklyMenu(hostelName: string | null): Promise<W
     `)
   
   if (hostelName) {
-    // Caretaker/Student: filter by hostel and week
+    // Caretaker/Student: filter by hostel and current week (today between start and end)
     query = query
       .eq('hostel_name', hostelName)
-      .eq('week_start_date', weekStart)
+      .lte('week_start_date', today)
+      .gte('week_end_date', today)
+      .order('week_start_date', { ascending: false })
+      .limit(1)
   } else {
     // Admin: get latest menu across all hostels
     query = query
+      .lte('week_start_date', today)
+      .gte('week_end_date', today)
       .order('week_start_date', { ascending: false })
       .limit(1)
   }
@@ -187,9 +192,9 @@ export async function getCurrentWeeklyMenu(hostelName: string | null): Promise<W
     return null
   }
   
-  // Organize meals by day
+  // Organize meals by day of week (sunday, monday, ..., saturday)
   const mealsByDay: Record<string, DayMenu> = {}
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   
   // Initialize all days with empty arrays
   days.forEach(day => {

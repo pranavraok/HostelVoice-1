@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { studentLeaveApi, StudentLeaveRequest, StudentLeaveType } from '@/lib/leave';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,82 +14,40 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CalendarIcon, Upload, CheckCircle2, AlertCircle, XCircle, Clock, MapPin, Phone, FileText, PlusCircle, List } from 'lucide-react';
+import { CalendarIcon, Upload, CheckCircle2, AlertCircle, XCircle, Clock, MapPin, Phone, FileText, PlusCircle, List, Loader2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
-interface Leave {
-  id: string;
-  leaveType: string;
-  startDate: Date;
-  endDate: Date;
-  reason: string;
-  destination: string;
-  contactNumber: string;
-  documentUrl: string | null;
-  status: string;
-  submittedAt: Date;
-  reviewedAt?: Date;
-  reviewedBy?: string;
-  returnStatus: string;
-  actualReturnDate?: Date;
-  rejectionReason?: string;
-}
+// Helper to format status for display
+const formatStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'pending': 'Pending',
+    'approved': 'Approved',
+    'rejected': 'Rejected',
+    'more_info': 'More Info Needed'
+  };
+  return statusMap[status] || status;
+};
 
-// Dummy data
-const dummyMyLeaves: Leave[] = [
-  {
-    id: '1',
-    leaveType: 'Home Visit',
-    startDate: new Date('2026-02-10T10:00:00'),
-    endDate: new Date('2026-02-15T18:00:00'),
-    reason: 'Going home for my sister\'s wedding',
-    destination: '123 Main Street, Bangalore, Karnataka - 560001',
-    contactNumber: '+91 98765 43210',
-    documentUrl: 'parent-letter.pdf',
-    status: 'Pending',
-    submittedAt: new Date('2026-01-29T14:30:00'),
-    returnStatus: 'Not Returned'
-  },
-  {
-    id: '2',
-    leaveType: 'Medical',
-    startDate: new Date('2026-01-25T08:00:00'),
-    endDate: new Date('2026-01-27T20:00:00'),
-    reason: 'Doctor appointment for regular checkup',
-    destination: 'City Hospital, Mumbai - 400012',
-    contactNumber: '+91 87654 32109',
-    documentUrl: 'medical-appointment.pdf',
-    status: 'Approved',
-    submittedAt: new Date('2026-01-24T09:15:00'),
-    reviewedAt: new Date('2026-01-24T15:30:00'),
-    reviewedBy: 'Caretaker Singh',
-    returnStatus: 'Returned',
-    actualReturnDate: new Date('2026-01-27T19:00:00')
-  },
-  {
-    id: '3',
-    leaveType: 'Personal',
-    startDate: new Date('2026-01-20T12:00:00'),
-    endDate: new Date('2026-01-22T20:00:00'),
-    reason: 'Attending friend\'s birthday party',
-    destination: 'Local City',
-    contactNumber: '+91 76543 21098',
-    documentUrl: null,
-    status: 'Rejected',
-    submittedAt: new Date('2026-01-19T16:20:00'),
-    reviewedAt: new Date('2026-01-20T10:00:00'),
-    reviewedBy: 'Caretaker Singh',
-    rejectionReason: 'Personal events are not considered valid leave reasons during semester',
-    returnStatus: 'Not Returned'
-  }
-];
+// Helper to format return status for display
+const formatReturnStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'not_returned': 'Not Returned',
+    'returned': 'Returned',
+    'overdue': 'Overdue'
+  };
+  return statusMap[status] || status;
+};
 
 export default function StudentLeavePage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('my-leaves');
-  const [leaves, setLeaves] = useState<Leave[]>(dummyMyLeaves);
-  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
+  const [leaves, setLeaves] = useState<StudentLeaveRequest[]>([]);
+  const [selectedLeave, setSelectedLeave] = useState<StudentLeaveRequest | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Apply form state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +55,7 @@ export default function StudentLeavePage() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [formData, setFormData] = useState({
-    leaveType: '',
+    leaveType: '' as StudentLeaveType | '',
     startTime: '',
     endTime: '',
     reason: '',
@@ -104,7 +64,36 @@ export default function StudentLeavePage() {
     document: null as File | null
   });
 
-  const handleInputChange = (field: string, value: any) => {
+  // Fetch leaves on mount
+  const fetchLeaves = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const response = await studentLeaveApi.getMyLeaves();
+      if (response.success && response.data) {
+        setLeaves(response.data);
+      } else {
+        toast.error(response.error || 'Failed to load leave requests');
+      }
+    } catch (error) {
+      console.error('Error fetching leaves:', error);
+      toast.error('Failed to load leave requests');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchLeaves();
+  };
+
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -116,107 +105,156 @@ export default function StudentLeavePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !startDate || !endDate || !formData.leaveType) return;
+
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      console.log('Leave Request Submitted:', {
-        ...formData,
-        startDate,
-        endDate,
-        submittedAt: new Date().toISOString()
-      });
+    try {
+      // Combine date and time
+      const startDateTime = new Date(startDate);
+      if (formData.startTime) {
+        const [hours, minutes] = formData.startTime.split(':');
+        startDateTime.setHours(parseInt(hours), parseInt(minutes));
+      }
+
+      const endDateTime = new Date(endDate);
+      if (formData.endTime) {
+        const [hours, minutes] = formData.endTime.split(':');
+        endDateTime.setHours(parseInt(hours), parseInt(minutes));
+      }
+
+      const response = await studentLeaveApi.create(
+        {
+          leave_type: formData.leaveType as StudentLeaveType,
+          start_date: startDateTime.toISOString(),
+          end_date: endDateTime.toISOString(),
+          destination: formData.destination,
+          contact_number: formData.contactNumber,
+          reason: formData.reason,
+          // TODO: Handle document upload to Supabase Storage
+        },
+        {
+          id: user.id,
+          name: user.name,
+          hostelName: user.hostelName,
+          roomNumber: user.roomNumber,
+        }
+      );
+
+      if (response.success && response.data) {
+        setIsSuccess(true);
+        // Add to local state
+        setLeaves(prev => [response.data!, ...prev]);
+        
+        setTimeout(() => {
+          setIsSuccess(false);
+          setActiveTab('my-leaves');
+          setFormData({
+            leaveType: '',
+            startTime: '',
+            endTime: '',
+            reason: '',
+            destination: '',
+            contactNumber: '',
+            document: null
+          });
+          setStartDate(undefined);
+          setEndDate(undefined);
+        }, 2000);
+      } else {
+        toast.error(response.error || 'Failed to submit leave request');
+      }
+    } catch (error) {
+      console.error('Error submitting leave:', error);
+      toast.error('Failed to submit leave request');
+    } finally {
       setIsSubmitting(false);
-      setIsSuccess(true);
-      
-      setTimeout(() => {
-        setIsSuccess(false);
-        setActiveTab('my-leaves');
-        setFormData({
-          leaveType: '',
-          startTime: '',
-          endTime: '',
-          reason: '',
-          destination: '',
-          contactNumber: '',
-          document: null
-        });
-        setStartDate(undefined);
-        setEndDate(undefined);
-      }, 2000);
-    }, 1500);
+    }
   };
 
-  const handleViewDetails = (leave: Leave) => {
+  const handleViewDetails = (leave: StudentLeaveRequest) => {
     setSelectedLeave(leave);
     setIsDetailDialogOpen(true);
   };
 
-  const handleMarkReturn = (leave: Leave) => {
+  const handleMarkReturn = (leave: StudentLeaveRequest) => {
     setSelectedLeave(leave);
     setIsReturnDialogOpen(true);
   };
 
-  const confirmReturn = () => {
+  const confirmReturn = async () => {
     if (!selectedLeave) return;
 
-    const updatedLeaves = leaves.map(leave => {
-      if (leave.id === selectedLeave.id) {
-        return {
-          ...leave,
-          returnStatus: 'Returned',
-          actualReturnDate: new Date()
-        };
-      }
-      return leave;
-    });
+    try {
+      const response = await studentLeaveApi.markReturn(selectedLeave.id, {
+        return_status: 'returned',
+        actual_return_date: new Date().toISOString(),
+      });
 
-    setLeaves(updatedLeaves);
-    setIsReturnDialogOpen(false);
-    setSelectedLeave(null);
+      if (response.success && response.data) {
+        // Update local state
+        setLeaves(prev => prev.map(leave => 
+          leave.id === selectedLeave.id ? response.data! : leave
+        ));
+        toast.success('Return marked successfully!');
+      } else {
+        toast.error(response.error || 'Failed to mark return');
+      }
+    } catch (error) {
+      console.error('Error marking return:', error);
+      toast.error('Failed to mark return');
+    } finally {
+      setIsReturnDialogOpen(false);
+      setSelectedLeave(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      Pending: { bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' },
-      Approved: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
-      Rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' }
+    const styles: Record<string, { bg: string; color: string; border: string }> = {
+      pending: { bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' },
+      approved: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+      rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      more_info: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' }
     };
-    const style = styles[status as keyof typeof styles] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
+    const style = styles[status] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
 
     return (
       <Badge 
         className="gap-1 text-xs font-bold px-2 sm:px-3 py-1 border-2"
         style={{ background: style.bg, color: style.color, borderColor: style.border }}
       >
-        {status === 'Pending' && <AlertCircle className="h-3 w-3" />}
-        {status === 'Approved' && <CheckCircle2 className="h-3 w-3" />}
-        {status === 'Rejected' && <XCircle className="h-3 w-3" />}
-        {status}
+        {status === 'pending' && <AlertCircle className="h-3 w-3" />}
+        {status === 'approved' && <CheckCircle2 className="h-3 w-3" />}
+        {status === 'rejected' && <XCircle className="h-3 w-3" />}
+        {status === 'more_info' && <AlertCircle className="h-3 w-3" />}
+        {formatStatus(status)}
       </Badge>
     );
   };
 
   const getReturnBadge = (returnStatus: string) => {
-    const styles = {
-      Returned: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
-      Overdue: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
-      default: { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' }
+    const styles: Record<string, { bg: string; color: string; border: string }> = {
+      returned: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+      overdue: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      not_returned: { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' }
     };
-    const style = styles[returnStatus as keyof typeof styles] || styles.default;
+    const style = styles[returnStatus] || styles.not_returned;
 
     return (
       <Badge 
         className="text-xs font-bold px-2 sm:px-3 py-1 border-2"
         style={{ background: style.bg, color: style.color, borderColor: style.border }}
       >
-        {returnStatus === 'Not Returned' ? 'Not Returned' : returnStatus}
+        {formatReturnStatus(returnStatus)}
       </Badge>
     );
   };
 
-  const LeaveCard = ({ leave }: { leave: Leave }) => {
-    const duration = Math.ceil((leave.endDate.getTime() - leave.startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const isActive = leave.status === 'Approved' && leave.returnStatus === 'Not Returned' && new Date() >= leave.startDate && new Date() <= leave.endDate;
+  const LeaveCard = ({ leave }: { leave: StudentLeaveRequest }) => {
+    const startDate = new Date(leave.start_date);
+    const endDate = new Date(leave.end_date);
+    const duration = leave.total_days;
+    const isActive = leave.status === 'approved' && leave.return_status === 'not_returned' && new Date() >= startDate && new Date() <= endDate;
     
     return (
       <div 
@@ -227,7 +265,7 @@ export default function StudentLeavePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-base sm:text-lg md:text-xl font-bold mb-2 break-words" style={{ color: '#014b89' }}>
-                {leave.leaveType}
+                {leave.leave_type}
                 {isActive && (
                   <Badge 
                     className="ml-2 text-xs font-bold px-2 py-1 border-2"
@@ -239,7 +277,7 @@ export default function StudentLeavePage() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {getStatusBadge(leave.status)}
-                {leave.status === 'Approved' && getReturnBadge(leave.returnStatus)}
+                {leave.status === 'approved' && getReturnBadge(leave.return_status)}
               </div>
             </div>
           </div>
@@ -254,7 +292,7 @@ export default function StudentLeavePage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-900 mb-1">Leave Period</p>
                 <p className="text-xs sm:text-sm text-gray-600 break-words">
-                  {format(leave.startDate, 'PPP')} - {format(leave.endDate, 'PPP')}
+                  {format(startDate, 'PPP')} - {format(endDate, 'PPP')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Duration: {duration} {duration === 1 ? 'day' : 'days'}
@@ -269,7 +307,7 @@ export default function StudentLeavePage() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-gray-900 mb-1">Submitted</p>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  {format(leave.submittedAt, 'PPP')}
+                  {format(new Date(leave.submitted_at), 'PPP')}
                 </p>
               </div>
             </div>
@@ -285,17 +323,22 @@ export default function StudentLeavePage() {
             </div>
           </div>
 
-          {leave.reviewedAt && (
+          {leave.reviewed_at && (
             <div className="border-t-2 border-gray-100 pt-4">
               <div className="p-3 sm:p-4 rounded-xl" style={{ background: 'rgba(1, 75, 137, 0.05)' }}>
                 <p className="text-sm font-bold mb-2" style={{ color: '#014b89' }}>Review Details</p>
                 <p className="text-xs sm:text-sm text-gray-700 mb-2">
-                  Reviewed by <strong>{leave.reviewedBy}</strong> on {format(leave.reviewedAt, 'PPP')}
+                  Reviewed by <strong>{leave.reviewed_by_name || 'Caretaker'}</strong> on {format(new Date(leave.reviewed_at), 'PPP')}
                 </p>
-                {leave.rejectionReason && (
+                {leave.caretaker_notes && (
+                  <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                    <strong>Notes:</strong> {leave.caretaker_notes}
+                  </p>
+                )}
+                {leave.rejection_reason && (
                   <div className="mt-2 p-3 rounded-lg border-2" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
                     <p className="text-xs sm:text-sm font-medium" style={{ color: '#ef4444' }}>
-                      <strong>Rejection Reason:</strong> {leave.rejectionReason}
+                      <strong>Rejection Reason:</strong> {leave.rejection_reason}
                     </p>
                   </div>
                 )}
@@ -303,11 +346,11 @@ export default function StudentLeavePage() {
             </div>
           )}
 
-          {leave.actualReturnDate && (
+          {leave.actual_return_date && (
             <div className="p-3 sm:p-4 rounded-xl border-2" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
               <p className="text-sm font-bold" style={{ color: '#10b981' }}>
                 <CheckCircle2 className="h-4 w-4 inline mr-2" />
-                Returned on {format(leave.actualReturnDate, 'PPP')}
+                Returned on {format(new Date(leave.actual_return_date), 'PPP')}
               </p>
             </div>
           )}
@@ -322,7 +365,7 @@ export default function StudentLeavePage() {
               View Details
             </Button>
             
-            {leave.status === 'Approved' && leave.returnStatus === 'Not Returned' && (
+            {leave.status === 'approved' && leave.return_status === 'not_returned' && (
               <Button 
                 onClick={() => handleMarkReturn(leave)}
                 className="flex-1 font-bold h-10 sm:h-11 text-xs sm:text-sm rounded-xl text-white"
@@ -339,6 +382,8 @@ export default function StudentLeavePage() {
       </div>
     );
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -392,13 +437,28 @@ export default function StudentLeavePage() {
 
           {/* My Leaves Tab */}
           <TabsContent value="my-leaves" className="space-y-4 sm:space-y-6 mt-0">
+            {/* Refresh Button */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="border-2 gap-2"
+                style={{ borderColor: '#014b89', color: '#014b89' }}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {[
                 { label: 'Total Requests', value: leaves.length, color: '#014b89' },
-                { label: 'Pending', value: leaves.filter(l => l.status === 'Pending').length, color: '#eab308' },
-                { label: 'Approved', value: leaves.filter(l => l.status === 'Approved').length, color: '#10b981' },
-                { label: 'Rejected', value: leaves.filter(l => l.status === 'Rejected').length, color: '#ef4444' }
+                { label: 'Pending', value: leaves.filter(l => l.status === 'pending').length, color: '#eab308' },
+                { label: 'Approved', value: leaves.filter(l => l.status === 'approved').length, color: '#10b981' },
+                { label: 'Rejected', value: leaves.filter(l => l.status === 'rejected').length, color: '#ef4444' }
               ].map((stat, i) => (
                 <div 
                   key={stat.label}
@@ -411,28 +471,38 @@ export default function StudentLeavePage() {
               ))}
             </div>
 
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin mb-4" style={{ color: '#014b89' }} />
+                <p className="text-gray-600">Loading your leave requests...</p>
+              </div>
+            )}
+
             {/* Leave Requests List */}
-            <div>
-              {leaves.length === 0 ? (
-                <div className="bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden">
-                  <div className="p-8 sm:p-12 text-center">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-4 sm:mb-6 flex items-center justify-center" style={{ background: 'rgba(1, 75, 137, 0.1)' }}>
-                      <List className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#014b89' }} />
+            {!isLoading && (
+              <div>
+                {leaves.length === 0 ? (
+                  <div className="bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden">
+                    <div className="p-8 sm:p-12 text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-4 sm:mb-6 flex items-center justify-center" style={{ background: 'rgba(1, 75, 137, 0.1)' }}>
+                        <List className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#014b89' }} />
+                      </div>
+                      <p className="text-sm sm:text-base text-gray-600 mb-4">You haven't applied for any leave yet</p>
+                      <Button 
+                        onClick={() => setActiveTab('apply')}
+                        className="text-white font-bold h-10 sm:h-11 px-6 rounded-xl text-sm sm:text-base"
+                        style={{ background: '#014b89' }}
+                      >
+                        Apply for Leave
+                      </Button>
                     </div>
-                    <p className="text-sm sm:text-base text-gray-600 mb-4">You haven't applied for any leave yet</p>
-                    <Button 
-                      onClick={() => setActiveTab('apply')}
-                      className="text-white font-bold h-10 sm:h-11 px-6 rounded-xl text-sm sm:text-base"
-                      style={{ background: '#014b89' }}
-                    >
-                      Apply for Leave
-                    </Button>
                   </div>
-                </div>
-              ) : (
-                leaves.map(leave => <LeaveCard key={leave.id} leave={leave} />)
-              )}
-            </div>
+                ) : (
+                  leaves.map(leave => <LeaveCard key={leave.id} leave={leave} />)
+                )}
+              </div>
+            )}
           </TabsContent>
 
           {/* Apply for Leave Tab */}
@@ -663,7 +733,7 @@ export default function StudentLeavePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-bold text-gray-900 mb-1">Leave Type</p>
-                  <p className="text-sm text-gray-600">{selectedLeave.leaveType}</p>
+                  <p className="text-sm text-gray-600">{selectedLeave.leave_type}</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900 mb-1">Status</p>
@@ -674,8 +744,9 @@ export default function StudentLeavePage() {
               <div>
                 <p className="text-sm font-bold text-gray-900 mb-1">Leave Period</p>
                 <p className="text-sm text-gray-600">
-                  {format(selectedLeave.startDate, 'PPP p')} to {format(selectedLeave.endDate, 'PPP p')}
+                  {format(new Date(selectedLeave.start_date), 'PPP p')} to {format(new Date(selectedLeave.end_date), 'PPP p')}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Duration: {selectedLeave.total_days} day(s)</p>
               </div>
 
               <div>
@@ -690,10 +761,10 @@ export default function StudentLeavePage() {
 
               <div>
                 <p className="text-sm font-bold text-gray-900 mb-1">Contact Number</p>
-                <p className="text-sm text-gray-600">{selectedLeave.contactNumber}</p>
+                <p className="text-sm text-gray-600">{selectedLeave.contact_number}</p>
               </div>
 
-              {selectedLeave.documentUrl && (
+              {selectedLeave.document_url && (
                 <div>
                   <p className="text-sm font-bold text-gray-900 mb-2">Supporting Document</p>
                   <Button 
@@ -703,21 +774,26 @@ export default function StudentLeavePage() {
                     style={{ borderColor: '#014b89', color: '#014b89' }}
                   >
                     <FileText className="h-3 w-3 mr-2" />
-                    {selectedLeave.documentUrl}
+                    View Document
                   </Button>
                 </div>
               )}
 
-              {selectedLeave.reviewedBy && selectedLeave.reviewedAt && (
+              {selectedLeave.reviewed_by_name && selectedLeave.reviewed_at && (
                 <div className="border-t-2 border-gray-100 pt-4">
                   <p className="text-sm font-bold text-gray-900 mb-2">Review Information</p>
                   <p className="text-sm text-gray-600 mb-2">
-                    Reviewed by {selectedLeave.reviewedBy} on {format(selectedLeave.reviewedAt, 'PPP p')}
+                    Reviewed by {selectedLeave.reviewed_by_name} on {format(new Date(selectedLeave.reviewed_at), 'PPP p')}
                   </p>
-                  {selectedLeave.rejectionReason && (
+                  {selectedLeave.caretaker_notes && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <strong>Notes:</strong> {selectedLeave.caretaker_notes}
+                    </p>
+                  )}
+                  {selectedLeave.rejection_reason && (
                     <div className="mt-2 p-3 rounded-lg border-2" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
                       <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
-                        <strong>Rejection Reason:</strong> {selectedLeave.rejectionReason}
+                        <strong>Rejection Reason:</strong> {selectedLeave.rejection_reason}
                       </p>
                     </div>
                   )}

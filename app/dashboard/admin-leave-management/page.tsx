@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,108 +10,53 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CalendarIcon, CheckCircle2, AlertCircle, XCircle, FileText, Shield, ChevronLeft, ChevronRight, Users, Clock } from 'lucide-react';
+import { CalendarIcon, CheckCircle2, AlertCircle, XCircle, FileText, Shield, ChevronLeft, ChevronRight, Users, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, differenceInDays } from 'date-fns';
+import { toast } from 'sonner';
+import { 
+  CaretakerLeaveRequest, 
+  CalendarDay,
+  CaretakerInfo,
+  adminCaretakerLeaveApi,
+  getAllCaretakers
+} from '@/lib/leave';
 
-interface CaretakerLeave {
-  id: string;
-  caretakerName: string;
-  caretakerBlock: string;
-  leaveType: string;
-  startDate: Date;
-  endDate: Date;
-  numberOfDays: number;
-  reason: string;
-  documentUrl: string | null;
-  replacementSuggestion: string;
-  status: string;
-  submittedAt: Date;
-  reviewedAt?: Date;
-  reviewedBy?: string;
-  assignedReplacement?: string;
-  rejectionReason?: string;
-  adminNotes?: string;
-}
+// Helper function to format status for display
+const formatStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'pending': 'Pending',
+    'approved': 'Approved',
+    'rejected': 'Rejected',
+    'conditional': 'Conditionally Approved'
+  };
+  return statusMap[status] || status;
+};
 
-interface CalendarDay {
-  date: Date;
-  leaves: CaretakerLeave[];
-  available: number;
-  total: number;
-}
-
-// Dummy Caretaker Leave Requests
-const dummyCaretakerLeaves: CaretakerLeave[] = [
-  {
-    id: '1',
-    caretakerName: 'Kumar Singh',
-    caretakerBlock: 'Block A',
-    leaveType: 'Casual',
-    startDate: new Date('2026-02-10'),
-    endDate: new Date('2026-02-12'),
-    numberOfDays: 3,
-    reason: 'Personal family function - daughter\'s engagement ceremony',
-    documentUrl: null,
-    replacementSuggestion: 'Sharma - Block B',
-    status: 'Pending',
-    submittedAt: new Date('2026-01-29T10:30:00')
-  },
-  {
-    id: '2',
-    caretakerName: 'Patel Ji',
-    caretakerBlock: 'Block C',
-    leaveType: 'Sick',
-    startDate: new Date('2026-02-05'),
-    endDate: new Date('2026-02-07'),
-    numberOfDays: 3,
-    reason: 'Severe fever and need rest as per doctor\'s advice',
-    documentUrl: 'medical-certificate.pdf',
-    replacementSuggestion: 'Reddy - Block D',
-    status: 'Approved',
-    submittedAt: new Date('2026-01-28T09:15:00'),
-    reviewedAt: new Date('2026-01-28T15:30:00'),
-    reviewedBy: 'Admin Verma',
-    assignedReplacement: 'Reddy - Block D'
-  },
-  {
-    id: '3',
-    caretakerName: 'Sharma',
-    caretakerBlock: 'Block B',
-    leaveType: 'Emergency',
-    startDate: new Date('2026-02-15'),
-    endDate: new Date('2026-02-17'),
-    numberOfDays: 3,
-    reason: 'Family emergency - need to attend to urgent family matter',
-    documentUrl: null,
-    replacementSuggestion: 'Kumar - Block A',
-    status: 'Approved',
-    submittedAt: new Date('2026-01-27T14:20:00'),
-    reviewedAt: new Date('2026-01-27T16:45:00'),
-    reviewedBy: 'Admin Verma',
-    assignedReplacement: 'Kumar - Block A'
-  },
-  {
-    id: '4',
-    caretakerName: 'Reddy',
-    caretakerBlock: 'Block D',
-    leaveType: 'Casual',
-    startDate: new Date('2026-02-20'),
-    endDate: new Date('2026-02-22'),
-    numberOfDays: 3,
-    reason: 'Personal work - need to handle property documentation',
-    documentUrl: null,
-    replacementSuggestion: 'Patel - Block C',
-    status: 'Pending',
-    submittedAt: new Date('2026-01-29T16:00:00')
-  }
-];
+// Helper function to format leave type for display
+const formatLeaveType = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'casual': 'Casual',
+    'sick': 'Sick',
+    'emergency': 'Emergency',
+    'earned': 'Earned'
+  };
+  return typeMap[type] || type;
+};
 
 export default function AdminLeaveManagementPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('review-caretakers');
   
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [isLoadingCaretakers, setIsLoadingCaretakers] = useState(false);
+  
   // Caretaker Leave Review State
-  const [caretakerLeaves, setCaretakerLeaves] = useState<CaretakerLeave[]>(dummyCaretakerLeaves);
-  const [selectedCaretakerLeave, setSelectedCaretakerLeave] = useState<CaretakerLeave | null>(null);
+  const [caretakerLeaves, setCaretakerLeaves] = useState<CaretakerLeaveRequest[]>([]);
+  const [selectedCaretakerLeave, setSelectedCaretakerLeave] = useState<CaretakerLeaveRequest | null>(null);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'conditional' | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [assignedReplacement, setAssignedReplacement] = useState('');
@@ -120,125 +66,239 @@ export default function AdminLeaveManagementPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [filterCaretaker, setFilterCaretaker] = useState<string>('all');
+  const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
+
+  // Caretaker list for replacement dropdown
+  const [allCaretakers, setAllCaretakers] = useState<CaretakerInfo[]>([]);
+
+  // Fetch caretaker leave requests
+  const fetchCaretakerLeaves = useCallback(async () => {
+    try {
+      const response = await adminCaretakerLeaveApi.getAllCaretakerLeaves();
+      if (response.success && response.data) {
+        setCaretakerLeaves(response.data);
+      } else {
+        toast.error(response.error || 'Failed to fetch caretaker leave requests');
+      }
+    } catch (error) {
+      console.error('Error fetching caretaker leaves:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Fetch calendar data
+  const fetchCalendarData = useCallback(async () => {
+    setIsLoadingCalendar(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      
+      const response = await adminCaretakerLeaveApi.getCalendarData(year, month);
+      
+      if (response.success && response.data) {
+        // Filter by block if needed
+        if (filterCaretaker !== 'all') {
+          const filtered = response.data.map(day => ({
+            ...day,
+            leaves: day.leaves.filter(leave => 
+              leave.caretaker_block && leave.caretaker_block.includes(filterCaretaker)
+            ),
+          }));
+          setCalendarData(filtered);
+        } else {
+          setCalendarData(response.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching calendar data:', error);
+    } finally {
+      setIsLoadingCalendar(false);
+    }
+  }, [currentMonth, filterCaretaker]);
+
+  // Fetch all caretakers for replacement dropdown
+  const fetchCaretakers = useCallback(async () => {
+    setIsLoadingCaretakers(true);
+    try {
+      const response = await getAllCaretakers();
+      if (response.success && response.data) {
+        setAllCaretakers(response.data);
+      } else {
+        toast.error(response.error || 'Failed to fetch caretakers');
+      }
+    } catch (error) {
+      console.error('Error fetching caretakers:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoadingCaretakers(false);
+    }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchCaretakerLeaves();
+    fetchCaretakers();
+  }, [fetchCaretakerLeaves, fetchCaretakers]);
+
+  // Fetch calendar data when month or filter changes
+  useEffect(() => {
+    if (activeTab === 'calendar') {
+      fetchCalendarData();
+    }
+  }, [fetchCalendarData, activeTab]);
+
+  // Refresh handler
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchCaretakerLeaves();
+  };
 
   // Review Caretaker Leaves Functions
-  const openReviewDialog = (leave: CaretakerLeave, type: 'approve' | 'reject' | 'conditional') => {
+  const openReviewDialog = (leave: CaretakerLeaveRequest, type: 'approve' | 'reject' | 'conditional') => {
     setSelectedCaretakerLeave(leave);
     setReviewAction(type);
     setReviewNotes('');
-    setAssignedReplacement(leave.replacementSuggestion);
+    setAssignedReplacement(leave.replacement_suggestion || '');
     setIsReviewDialogOpen(true);
   };
 
-  const handleReview = () => {
-    if (!selectedCaretakerLeave || !reviewAction) return;
-
-    const updatedLeaves = caretakerLeaves.map(leave => {
-      if (leave.id === selectedCaretakerLeave.id) {
-        const updated = {
-          ...leave,
-          status: reviewAction === 'approve' ? 'Approved' : reviewAction === 'reject' ? 'Rejected' : 'Conditionally Approved',
-          reviewedAt: new Date(),
-          reviewedBy: 'Admin Verma',
-          adminNotes: reviewNotes
-        };
-        
-        if (reviewAction === 'approve' || reviewAction === 'conditional') {
-          updated.assignedReplacement = assignedReplacement;
-        }
-        
-        if (reviewAction === 'reject') {
-          updated.rejectionReason = reviewNotes;
-        }
-        
-        return updated;
+  const handleReview = async () => {
+    if (!selectedCaretakerLeave || !reviewAction || !user) return;
+    
+    setIsReviewing(true);
+    try {
+      const newStatus = reviewAction === 'approve' ? 'approved' : 
+                        reviewAction === 'reject' ? 'rejected' : 'conditional';
+      
+      const response = await adminCaretakerLeaveApi.review(
+        selectedCaretakerLeave.id,
+        {
+          status: newStatus as 'approved' | 'rejected' | 'conditional',
+          admin_notes: reviewNotes || undefined,
+          assigned_replacement: (reviewAction === 'approve' || reviewAction === 'conditional') ? assignedReplacement : undefined,
+          rejection_reason: reviewAction === 'reject' ? reviewNotes : undefined,
+        },
+        user.name || 'Admin'
+      );
+      
+      if (response.success) {
+        toast.success(`Leave request ${formatStatus(newStatus).toLowerCase()} successfully`);
+        fetchCaretakerLeaves();
+        setIsReviewDialogOpen(false);
+        setSelectedCaretakerLeave(null);
+        setReviewAction(null);
+        setReviewNotes('');
+        setAssignedReplacement('');
+      } else {
+        toast.error(response.error || 'Failed to update leave request');
       }
-      return leave;
-    });
-
-    setCaretakerLeaves(updatedLeaves);
-    setIsReviewDialogOpen(false);
-    setSelectedCaretakerLeave(null);
-    setReviewAction(null);
-    setReviewNotes('');
-    setAssignedReplacement('');
+    } catch (error) {
+      console.error('Error reviewing leave:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsReviewing(false);
+    }
   };
 
-  // Calendar Functions
+  // Calendar Functions - use API data or fallback to local calculation
   const getCalendarDays = (): CalendarDay[] => {
+    if (calendarData.length > 0) {
+      return calendarData;
+    }
+    
+    // Fallback: Calculate locally from caretakerLeaves
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
     return days.map(date => {
-      const leavesOnDay = caretakerLeaves.filter(leave => 
-        (filterCaretaker === 'all' || leave.caretakerBlock?.includes(filterCaretaker)) &&
-        leave.status === 'Approved' &&
-        date >= leave.startDate && date <= leave.endDate
-      );
+      const leavesOnDay = caretakerLeaves.filter(leave => {
+        const matchesFilter = filterCaretaker === 'all' || (leave.caretaker_block && leave.caretaker_block.includes(filterCaretaker));
+        const startDate = new Date(leave.start_date);
+        const endDate = new Date(leave.end_date);
+        return matchesFilter && leave.status === 'approved' && date >= startDate && date <= endDate;
+      });
 
-      const total = 8;
-      const onLeave = leavesOnDay.length;
-      const available = total - onLeave;
+      const total = 8; // Default total caretakers
+      const onLeaveCount = leavesOnDay.length;
+      const available = total - onLeaveCount;
 
       return {
-        date,
+        date: date.toISOString(),
         leaves: leavesOnDay,
-        available,
-        total
+        totalCaretakers: total,
+        availableCaretakers: available,
+        onLeave: onLeaveCount,
+        staffingPercentage: Math.round((available / total) * 100)
       };
     });
   };
 
-  const getStaffingColor = (available: number, total: number) => {
-    const percentage = (available / total) * 100;
+  const getStaffingColor = (availableCaretakers: number, totalCaretakers: number) => {
+    const percentage = (availableCaretakers / totalCaretakers) * 100;
     if (percentage >= 75) return '#10b981';
     if (percentage >= 50) return '#eab308';
     return '#ef4444';
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      Pending: { bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' },
-      Approved: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
-      Rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
-      'Conditionally Approved': { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' }
+    const displayStatus = formatStatus(status);
+    const styles: Record<string, { bg: string; color: string; border: string }> = {
+      'pending': { bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' },
+      'approved': { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+      'rejected': { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      'conditional': { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' }
     };
-    const style = styles[status as keyof typeof styles] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
+    const style = styles[status] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
 
     return (
       <Badge 
         className="gap-1 text-xs font-bold px-2 sm:px-3 py-1 border-2 whitespace-nowrap"
         style={{ background: style.bg, color: style.color, borderColor: style.border }}
       >
-        {status === 'Pending' && <AlertCircle className="h-3 w-3" />}
-        {status === 'Approved' && <CheckCircle2 className="h-3 w-3" />}
-        {status === 'Rejected' && <XCircle className="h-3 w-3" />}
-        <span className="hidden sm:inline">{status}</span>
-        <span className="sm:hidden">{status === 'Conditionally Approved' ? 'Cond.' : status}</span>
+        {status === 'pending' && <AlertCircle className="h-3 w-3" />}
+        {status === 'approved' && <CheckCircle2 className="h-3 w-3" />}
+        {status === 'rejected' && <XCircle className="h-3 w-3" />}
+        <span className="hidden sm:inline">{displayStatus}</span>
+        <span className="sm:hidden">{status === 'conditional' ? 'Cond.' : displayStatus}</span>
       </Badge>
     );
   };
 
+  // Helper function to get caretaker display name from ID
+  const getCaretakerName = (caretakerId: string | null | undefined): string => {
+    if (!caretakerId) return 'Not specified';
+    const caretaker = allCaretakers.find(c => c.id === caretakerId);
+    if (caretaker) {
+      return `${caretaker.full_name} - ${caretaker.hostel_name}`;
+    }
+    return caretakerId;
+  };
+
   const getLeaveTypeBadge = (type: string) => {
-    const styles = {
-      Emergency: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
-      Sick: { bg: 'rgba(242, 105, 24, 0.1)', color: '#f26918', border: 'rgba(242, 105, 24, 0.3)' },
-      Casual: { bg: 'rgba(1, 75, 137, 0.1)', color: '#014b89', border: 'rgba(1, 75, 137, 0.3)' }
+    const displayType = formatLeaveType(type);
+    const styles: Record<string, { bg: string; color: string; border: string }> = {
+      'emergency': { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      'sick': { bg: 'rgba(242, 105, 24, 0.1)', color: '#f26918', border: 'rgba(242, 105, 24, 0.3)' },
+      'casual': { bg: 'rgba(1, 75, 137, 0.1)', color: '#014b89', border: 'rgba(1, 75, 137, 0.3)' },
+      'earned': { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' }
     };
-    const style = styles[type as keyof typeof styles] || { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' };
+    const style = styles[type] || { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' };
 
     return (
       <Badge 
         className="text-xs font-bold px-2 sm:px-3 py-1 border-2"
         style={{ background: style.bg, color: style.color, borderColor: style.border }}
       >
-        {type}
+        {displayType}
       </Badge>
     );
   };
 
-  const CaretakerLeaveCard = ({ leave }: { leave: CaretakerLeave }) => {
+  const CaretakerLeaveCard = ({ leave }: { leave: CaretakerLeaveRequest }) => {
     return (
       <div className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden mb-4 hover:shadow-lg transition-all">
         <div className="p-4 sm:p-5 md:p-6 border-b-2 border-gray-100">
@@ -250,13 +310,13 @@ export default function AdminLeaveManagementPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base sm:text-lg font-bold truncate" style={{ color: '#014b89' }}>
-                    {leave.caretakerName}
+                    {leave.caretaker_name || 'Unknown Caretaker'}
                   </h3>
-                  <p className="text-xs text-gray-600">{leave.caretakerBlock}</p>
+                  <p className="text-xs text-gray-600">{leave.caretaker_block || 'Unknown Block'}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {getLeaveTypeBadge(leave.leaveType)}
+                {getLeaveTypeBadge(leave.leave_type)}
               </div>
             </div>
             <div className="flex-shrink-0">
@@ -274,10 +334,10 @@ export default function AdminLeaveManagementPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-900 mb-1">Leave Period</p>
                 <p className="text-xs sm:text-sm text-gray-600 break-words">
-                  {format(leave.startDate, 'PPP')} - {format(leave.endDate, 'PPP')}
+                  {format(new Date(leave.start_date), 'PPP')} - {format(new Date(leave.end_date), 'PPP')}
                 </p>
                 <p className="text-xs font-bold mt-1" style={{ color: '#014b89' }}>
-                  Duration: {leave.numberOfDays} {leave.numberOfDays === 1 ? 'day' : 'days'}
+                  Duration: {leave.total_days} {leave.total_days === 1 ? 'day' : 'days'}
                 </p>
               </div>
             </div>
@@ -289,7 +349,7 @@ export default function AdminLeaveManagementPage() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-gray-900 mb-1">Submitted</p>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  {format(leave.submittedAt, 'PPP')}
+                  {format(new Date(leave.created_at), 'PPP')}
                 </p>
               </div>
             </div>
@@ -311,52 +371,53 @@ export default function AdminLeaveManagementPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 mb-1">Replacement Suggestion</p>
-              <p className="text-xs sm:text-sm text-gray-600">{leave.replacementSuggestion}</p>
+              <p className="text-xs sm:text-sm text-gray-600">{getCaretakerName(leave.replacement_suggestion)}</p>
             </div>
           </div>
 
-          {leave.documentUrl && (
+          {leave.document_url && (
             <div>
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="gap-2 border-2 h-9 text-xs w-full sm:w-auto"
                 style={{ borderColor: '#014b89', color: '#014b89' }}
+                onClick={() => window.open(leave.document_url!, '_blank')}
               >
                 <FileText className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">View: {leave.documentUrl}</span>
+                <span className="truncate">View Document</span>
               </Button>
             </div>
           )}
 
-          {leave.reviewedAt && (
+          {leave.reviewed_at && (
             <div className="border-t-2 border-gray-100 pt-4">
               <div className="p-3 sm:p-4 rounded-xl" style={{ background: 'rgba(1, 75, 137, 0.05)' }}>
                 <p className="text-sm font-bold mb-2" style={{ color: '#014b89' }}>Review Details</p>
                 <p className="text-xs sm:text-sm text-gray-700 mb-2">
-                  Reviewed by <strong>{leave.reviewedBy}</strong> on {format(leave.reviewedAt, 'PPP')}
+                  Reviewed by <strong>{leave.reviewed_by_name || 'Admin'}</strong> on {format(new Date(leave.reviewed_at), 'PPP')}
                 </p>
                 
-                {leave.assignedReplacement && (
+                {leave.assigned_replacement && (
                   <div className="mt-2 p-3 rounded-lg border-2" style={{ background: 'rgba(1, 75, 137, 0.05)', borderColor: 'rgba(1, 75, 137, 0.3)' }}>
                     <p className="text-xs sm:text-sm font-medium" style={{ color: '#014b89' }}>
-                      <strong>Assigned Replacement:</strong> {leave.assignedReplacement}
+                      <strong>Assigned Replacement:</strong> {getCaretakerName(leave.assigned_replacement)}
                     </p>
                   </div>
                 )}
 
-                {leave.adminNotes && leave.status === 'Conditionally Approved' && (
+                {leave.admin_notes && leave.status === 'conditional' && (
                   <div className="mt-2 p-3 rounded-lg border-2" style={{ background: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.3)' }}>
                     <p className="text-xs sm:text-sm font-medium" style={{ color: '#3b82f6' }}>
-                      <strong>Conditions:</strong> {leave.adminNotes}
+                      <strong>Conditions:</strong> {leave.admin_notes}
                     </p>
                   </div>
                 )}
                 
-                {leave.rejectionReason && (
+                {leave.rejection_reason && leave.status === 'rejected' && (
                   <div className="mt-2 p-3 rounded-lg border-2" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
                     <p className="text-xs sm:text-sm font-medium" style={{ color: '#ef4444' }}>
-                      <strong>Rejection Reason:</strong> {leave.rejectionReason}
+                      <strong>Rejection Reason:</strong> {leave.rejection_reason}
                     </p>
                   </div>
                 )}
@@ -364,7 +425,7 @@ export default function AdminLeaveManagementPage() {
             </div>
           )}
 
-          {leave.status === 'Pending' && (
+          {leave.status === 'pending' && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-4 border-t-2 border-gray-100">
               <Button 
                 onClick={() => openReviewDialog(leave, 'approve')}
@@ -396,9 +457,11 @@ export default function AdminLeaveManagementPage() {
     );
   };
 
-  const pendingCaretakerLeaves = caretakerLeaves.filter(l => l.status === 'Pending');
-  const reviewedCaretakerLeaves = caretakerLeaves.filter(l => l.status !== 'Pending');
+  const pendingCaretakerLeaves = caretakerLeaves.filter(l => l.status === 'pending');
+  const reviewedCaretakerLeaves = caretakerLeaves.filter(l => l.status !== 'pending');
   const calendarDays = getCalendarDays();
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -456,6 +519,20 @@ export default function AdminLeaveManagementPage() {
 
           {/* Review Caretaker Leaves Tab */}
           <TabsContent value="review-caretakers" className="space-y-4 sm:space-y-6 mt-0">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base sm:text-lg font-bold" style={{ color: '#014b89' }}>Caretaker Leave Requests</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+            
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
               {[
                 { label: 'Total', value: caretakerLeaves.length, color: '#014b89' },
@@ -472,6 +549,15 @@ export default function AdminLeaveManagementPage() {
               ))}
             </div>
 
+            {isLoading ? (
+              <div className="bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden">
+                <div className="p-8 sm:p-12 text-center flex flex-col items-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#014b89' }} />
+                  <p className="text-sm sm:text-base text-gray-600">Loading caretaker leave requests...</p>
+                </div>
+              </div>
+            ) : (
+            <>
             <div>
               <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4" style={{ color: '#014b89' }}>Pending Requests</h3>
               {pendingCaretakerLeaves.length === 0 ? (
@@ -494,6 +580,8 @@ export default function AdminLeaveManagementPage() {
                   <CaretakerLeaveCard key={leave.id} leave={leave} />
                 ))}
               </div>
+            )}
+            </>
             )}
           </TabsContent>
 
@@ -552,6 +640,13 @@ export default function AdminLeaveManagementPage() {
                   </Select>
                 </div>
 
+                {isLoadingCalendar ? (
+                  <div className="p-8 text-center flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#014b89' }} />
+                    <p className="text-sm text-gray-600">Loading calendar data...</p>
+                  </div>
+                ) : (
+                <>
                 <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
                     <div key={idx} className="text-center text-[10px] sm:text-xs md:text-sm font-bold text-gray-700 p-1 sm:p-2">
@@ -563,13 +658,14 @@ export default function AdminLeaveManagementPage() {
 
                 <div className="grid grid-cols-7 gap-1 sm:gap-2">
                   {calendarDays.map((day, idx) => {
-                    const staffingColor = getStaffingColor(day.available, day.total);
-                    const isToday = isSameDay(day.date, new Date());
+                    const dateObj = typeof day.date === 'string' ? new Date(day.date) : day.date;
+                    const staffingColor = getStaffingColor(day.availableCaretakers, day.totalCaretakers);
+                    const isToday = isSameDay(dateObj, new Date());
                     
                     return (
                       <button
                         key={idx}
-                        onClick={() => setSelectedDate(day.date)}
+                        onClick={() => setSelectedDate(dateObj)}
                         className="aspect-square p-1 sm:p-2 border-2 rounded-lg transition-all hover:shadow-md relative"
                         style={{
                           borderColor: isToday ? '#014b89' : '#e5e7eb',
@@ -577,7 +673,7 @@ export default function AdminLeaveManagementPage() {
                         }}
                       >
                         <div className="text-[10px] sm:text-xs md:text-sm font-bold" style={{ color: isToday ? '#014b89' : '#1f2937' }}>
-                          {format(day.date, 'd')}
+                          {format(dateObj, 'd')}
                         </div>
                         {day.leaves.length > 0 && (
                           <div className="mt-0.5 sm:mt-1">
@@ -586,7 +682,7 @@ export default function AdminLeaveManagementPage() {
                               style={{ backgroundColor: staffingColor }}
                             />
                             <div className="text-[8px] sm:text-[10px] font-bold mt-0.5 sm:mt-1" style={{ color: staffingColor }}>
-                              {day.available}/{day.total}
+                              {day.availableCaretakers}/{day.totalCaretakers}
                             </div>
                           </div>
                         )}
@@ -594,6 +690,8 @@ export default function AdminLeaveManagementPage() {
                     );
                   })}
                 </div>
+                </>
+                )}
 
                 <div className="mt-4 sm:mt-6 pt-4 border-t-2">
                   <h4 className="text-xs sm:text-sm font-bold mb-2 sm:mb-3" style={{ color: '#014b89' }}>Staffing Level Legend</h4>
@@ -621,28 +719,36 @@ export default function AdminLeaveManagementPage() {
                   <h3 className="text-base sm:text-lg font-bold mb-4" style={{ color: '#014b89' }}>
                     Leaves on {format(selectedDate, 'PPP')}
                   </h3>
-                  {calendarDays.find(d => isSameDay(d.date, selectedDate))?.leaves.length === 0 ? (
-                    <p className="text-sm text-gray-600">No leaves on this day</p>
-                  ) : (
-                    <div className="space-y-2 sm:space-y-3">
-                      {calendarDays.find(d => isSameDay(d.date, selectedDate))?.leaves.map(leave => (
-                        <div key={leave.id} className="p-3 sm:p-4 border-2 rounded-lg">
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-bold truncate" style={{ color: '#014b89' }}>{leave.caretakerName}</p>
-                              <p className="text-xs text-gray-600">{leave.caretakerBlock}</p>
+                  {(() => {
+                    const dayData = calendarDays.find(d => {
+                      const dateObj = typeof d.date === 'string' ? new Date(d.date) : d.date;
+                      return isSameDay(dateObj, selectedDate);
+                    });
+                    const leaves = dayData?.leaves || [];
+                    
+                    return leaves.length === 0 ? (
+                      <p className="text-sm text-gray-600">No leaves on this day</p>
+                    ) : (
+                      <div className="space-y-2 sm:space-y-3">
+                        {leaves.map(leave => (
+                          <div key={leave.id} className="p-3 sm:p-4 border-2 rounded-lg">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold truncate" style={{ color: '#014b89' }}>{leave.caretaker_name || 'Unknown'}</p>
+                                <p className="text-xs text-gray-600">{leave.caretaker_block || 'Unknown Block'}</p>
+                              </div>
+                              {getLeaveTypeBadge(leave.leave_type)}
                             </div>
-                            {getLeaveTypeBadge(leave.leaveType)}
+                            {leave.assigned_replacement && (
+                              <p className="text-xs text-gray-600 mt-2">
+                                Replacement: <strong>{leave.assigned_replacement}</strong>
+                              </p>
+                            )}
                           </div>
-                          {leave.assignedReplacement && (
-                            <p className="text-xs text-gray-600 mt-2">
-                              Replacement: <strong>{leave.assignedReplacement}</strong>
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -660,7 +766,7 @@ export default function AdminLeaveManagementPage() {
               {reviewAction === 'conditional' && 'Conditionally Approve Leave'}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              {selectedCaretakerLeave && `${selectedCaretakerLeave.caretakerName} - ${selectedCaretakerLeave.caretakerBlock}`}
+              {selectedCaretakerLeave && `${selectedCaretakerLeave.caretaker_name || 'Unknown'} - ${selectedCaretakerLeave.caretaker_block || 'Unknown Block'}`}
             </DialogDescription>
           </DialogHeader>
           
@@ -668,15 +774,18 @@ export default function AdminLeaveManagementPage() {
             {(reviewAction === 'approve' || reviewAction === 'conditional') && (
               <div className="space-y-2">
                 <Label className="text-sm font-bold">Assign Replacement Caretaker *</Label>
-                <Select value={assignedReplacement} onValueChange={setAssignedReplacement}>
+                <Select value={assignedReplacement} onValueChange={setAssignedReplacement} disabled={isLoadingCaretakers}>
                   <SelectTrigger className="border-2 h-10 sm:h-11">
-                    <SelectValue placeholder="Select replacement" />
+                    <SelectValue placeholder={isLoadingCaretakers ? "Loading caretakers..." : "Select replacement"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Kumar - Block A">Kumar - Block A</SelectItem>
-                    <SelectItem value="Sharma - Block B">Sharma - Block B</SelectItem>
-                    <SelectItem value="Patel - Block C">Patel - Block C</SelectItem>
-                    <SelectItem value="Reddy - Block D">Reddy - Block D</SelectItem>
+                    {allCaretakers
+                      .filter(c => c.id !== selectedCaretakerLeave?.caretaker_id)
+                      .map((caretaker) => (
+                        <SelectItem key={caretaker.id} value={caretaker.id}>
+                          {caretaker.full_name} - {caretaker.hostel_name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -707,6 +816,7 @@ export default function AdminLeaveManagementPage() {
             <Button 
               variant="outline" 
               onClick={() => setIsReviewDialogOpen(false)}
+              disabled={isReviewing}
               className="w-full sm:w-auto border-2 h-10 sm:h-11 text-sm sm:text-base rounded-xl"
             >
               Cancel
@@ -714,6 +824,7 @@ export default function AdminLeaveManagementPage() {
             <Button 
               onClick={handleReview}
               disabled={
+                isReviewing ||
                 (reviewAction !== 'approve' && !reviewNotes) ||
                 ((reviewAction === 'approve' || reviewAction === 'conditional') && !assignedReplacement)
               }
@@ -723,9 +834,18 @@ export default function AdminLeaveManagementPage() {
                            reviewAction === 'reject' ? '#ef4444' : '#3b82f6'
               }}
             >
-              {reviewAction === 'approve' && 'Approve'}
-              {reviewAction === 'reject' && 'Reject'}
-              {reviewAction === 'conditional' && 'Conditionally Approve'}
+              {isReviewing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {reviewAction === 'approve' && 'Approve'}
+                  {reviewAction === 'reject' && 'Reject'}
+                  {reviewAction === 'conditional' && 'Conditionally Approve'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
