@@ -162,7 +162,9 @@ export default function DashboardLayout({
                 </div>
                 <div className="flex items-center gap-2 pt-2 sm:pt-3 border-t border-gray-200">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#10b981' }}></div>
-                  <span className="text-xs text-gray-600 font-medium truncate">{user.hostelName}</span>
+                  <span className="text-xs text-gray-600 font-medium truncate">
+                    {user.role === 'admin' && user.position ? user.position : user.hostelName}
+                  </span>
                 </div>
                 {user.roomNumber && (
                   <div className="flex items-center gap-2 mt-2">

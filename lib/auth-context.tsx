@@ -18,6 +18,7 @@ export interface User {
   adminId?: string
   phoneNumber?: string
   department?: string
+  position?: string
   approvalStatus?: 'pending' | 'approved' | 'rejected'
   rejectionReason?: string
 }
@@ -64,6 +65,7 @@ function buildUserFromProfile(profile: any): User {
     adminId: profile.admin_id,
     phoneNumber: profile.phone_number,
     department: profile.department,
+    position: profile.position,
     approvalStatus: profile.approval_status,
     rejectionReason: profile.rejection_reason,
   }
