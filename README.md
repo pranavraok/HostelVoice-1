@@ -71,9 +71,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 ## 🎯 Main Features Explained Simply
 
 ### 1. 📋 **Issue & Complaint Tracking**
+
 **What it does**: Let students report problems, and staff can fix them
 
 **How it works**:
+
 - Student reports a problem (like "AC not working in Room 301")
 - Choose category (maintenance, cleaning, security, facilities, other)
 - Set priority (low, medium, high, urgent)
@@ -83,9 +85,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Everyone can see issue history and details
 
 ### 2. 📢 **Announcements**
+
 **What it does**: Share important news with everyone in the hostel
 
 **How it works**:
+
 - Caretaker or admin writes announcement
 - Choose who should see it (all students, only staff, or everyone)
 - Pin important announcements to show at top
@@ -93,9 +97,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Delete or edit announcements when needed
 
 ### 3. 🔍 **Lost & Found System**
+
 **What it does**: Help students find lost items and return found items
 
 **How it works**:
+
 - Report lost item with description, when/where lost, contact info
 - Report found item with description, when/where found, current location
 - Browse all lost and found items (wallet, phone, keys, documents, bags, clothes, etc.)
@@ -105,9 +111,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - All students can see all items for better chances of finding matches
 
 ### 4. 👥 **Resident Information**
+
 **What it does**: Store and view student details
 
 **How it works**:
+
 - Students see their own profile with room number, hostel name, emergency contacts
 - Caretakers see all students in their hostel
 - Admins see all students across all hostels
@@ -115,9 +123,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - View contact information for emergencies
 
 ### 5. 📊 **Analytics Dashboard**
+
 **What it does**: Show statistics and graphs about hostel activities
 
 **What you see**:
+
 - Total number of open issues, resolved issues
 - How many announcements posted this month
 - Lost & found items statistics
@@ -126,9 +136,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Different data for each role (student/caretaker/admin)
 
 ### 6. ✅ **User Approval System**
+
 **What it does**: Admins control who can join the system
 
 **How it works**:
+
 - New student/caretaker registers with details
 - Admin sees pending approval requests
 - Admin reviews details and approves or rejects
@@ -139,9 +151,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 ### 7. 🏖️ **Leave Application System**
 
 #### For Students:
+
 **What it does**: Request permission to leave hostel temporarily
 
 **How it works**:
+
 - Fill leave form with dates, destination, reason, contact during leave
 - Submit to caretaker for approval
 - Track status (pending, approved, rejected, more info needed)
@@ -149,17 +163,21 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Get notification when status changes
 
 #### For Caretakers:
+
 **What it does**: Review student leaves AND apply for own work leave
 
 **How it works**:
+
 - **Review Student Leaves**: Approve/reject student leave requests, ask for more info if needed
 - **Apply for Own Leave**: Request work leave from admin, suggest replacement caretaker, upload documents (medical certificate for sick leave)
 - **Track Own Status**: See if admin approved your leave request
 
 #### For Admins:
+
 **What it does**: Manage caretaker leaves and ensure proper staffing
 
 **How it works**:
+
 - Review all caretaker leave requests
 - Approve, conditionally approve, or reject
 - Assign replacement caretaker for coverage
@@ -169,9 +187,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 ### 8. 🍽️ **Mess Management System**
 
 #### For Students:
+
 **What it does**: View menu and give feedback on mess food
 
 **How it works**:
+
 - View weekly menu in calendar format (all 7 days)
 - See breakfast, lunch, snacks, dinner for each day
 - Download menu card image uploaded by caretaker
@@ -179,9 +199,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - See caretaker's response to your feedback
 
 #### For Caretakers:
+
 **What it does**: Upload menus and handle student feedback
 
 **How it works**:
+
 - Upload menu card image (physical menu photo)
 - Fill weekly menu for all days and meals
 - Enter items as comma-separated (e.g., "Idli, Sambar, Chutney, Tea")
@@ -191,9 +213,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - See ratings and suggestions from students
 
 #### For Admins:
+
 **What it does**: Monitor mess operations across hostels
 
 **How it works**:
+
 - View all menus from all hostels
 - See all student feedback and ratings
 - Access mess analytics and reports
@@ -201,9 +225,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Ensure caretakers are managing mess properly
 
 ### 9. 🔔 **Smart Notifications**
+
 **What it does**: Keep you updated about important activities
 
 **You get notified for**:
+
 - When your reported issue is assigned to someone
 - When your issue status changes (in-progress/resolved)
 - When your leave is approved or rejected
@@ -212,9 +238,11 @@ A comprehensive full-stack hostel management solution with **Next.js 16** fronte
 - Important system updates
 
 ### 10. 📱 **Role-Based Dashboard**
+
 **What it does**: Show different information based on who you are
 
 **How it works**:
+
 - Students see: My issues, announcements, lost items, mess menu, leave status
 - Caretakers see: All issues to manage, student leaves to review, mess management, own leave status
 - Admins see: All analytics, user approvals, system overview, caretaker leaves, mess monitoring
@@ -817,7 +845,7 @@ Edit `app/globals.css` for global styles or modify Tailwind config.
 **"Failed to fetch residents" / Data not loading**
 
 - Ensure you're calling the API through `lib/api.ts`
-- Never use `supabase.from()` directly in frontend (except auth)
+- Never use `supabase.from()` directly in frontend
 - Check backend controller implements role-based filtering
 - Verify backend route has correct middleware (`authMiddleware`)
 
