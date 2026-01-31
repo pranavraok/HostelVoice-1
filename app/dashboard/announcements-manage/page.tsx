@@ -23,7 +23,7 @@ export default function AnnouncementsManagePage() {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    priority: 'normal' as 'low' | 'normal' | 'high',
+    priority: 'normal' as 'normal' | 'high' | 'urgent',
     category: 'general',
     expires_at: '',
     target_role: 'all'
@@ -123,7 +123,7 @@ export default function AnnouncementsManagePage() {
     setFormData({
       title: announcement.title,
       content: announcement.content,
-      priority: announcement.priority as 'low' | 'normal' | 'high',
+      priority: announcement.priority as 'normal' | 'high' | 'urgent',
       category: announcement.category,
       expires_at: announcement.expires_at?.split('T')[0] || '',
       target_role: announcement.target_role
@@ -298,9 +298,9 @@ export default function AnnouncementsManagePage() {
                     onChange={handleInputChange}
                     className="w-full h-11 sm:h-12 px-3 sm:px-4 border-2 border-gray-200 rounded-xl focus:border-[#014b89] focus:ring-[#014b89] bg-white text-gray-900 font-medium text-sm sm:text-base"
                   >
-                    <option value="low">Low</option>
                     <option value="normal">Normal</option>
                     <option value="high">High (Pinned)</option>
+                    <option value="urgent">Urgent</option>
                   </select>
                 </div>
 
